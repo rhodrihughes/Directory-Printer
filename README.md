@@ -1,10 +1,10 @@
 <p align="center">
   <img src="Directory Printer/Directory Printer/Assets.xcassets/AppIcon.appiconset/Logo for App-iOS-Default-256x256@1x.png" width="128" alt="Directory Printer icon">
-  <br>
-  <strong>Directory Printer</strong>
 </p>
 
-A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents. The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.
+<h1 align="center">Directory Printer</h1>
+
+<p align="center">A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents. The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.</p>
 
 ## Features
 
