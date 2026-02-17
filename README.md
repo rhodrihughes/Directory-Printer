@@ -4,7 +4,9 @@
 
 <h1 align="center">Directory Printer</h1>
 
-<p align="center">A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents. The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.</p>
+<p align="center">A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents.
+The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.
+Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.</p>
 
 ## Features
 
