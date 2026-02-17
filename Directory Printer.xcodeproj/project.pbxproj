@@ -6,14 +6,34 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		49937B012F450400AABBCC01 /* SwiftCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 49937B002F450400AABBCC00 /* SwiftCheck */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		49937A202F450400AABBCC02 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 499379F92F45036E0041629C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 49937A002F45036E0041629C;
+			remoteInfo = "Directory Printer";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		49937A012F45036E0041629C /* Directory Printer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Directory Printer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		49937A152F450400AABBCC03 /* Directory PrinterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Directory PrinterTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		49937A032F45036E0041629C /* Directory Printer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Directory Printer";
+			sourceTree = "<group>";
+		};
+		49937A302F450400AABBCC04 /* Directory PrinterTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Directory PrinterTests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,6 +46,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		49937A122F450400AABBCC05 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				49937B012F450400AABBCC01 /* SwiftCheck in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				49937A032F45036E0041629C /* Directory Printer */,
+				49937A302F450400AABBCC04 /* Directory PrinterTests */,
 				49937A022F45036E0041629C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				49937A012F45036E0041629C /* Directory Printer.app */,
+				49937A152F450400AABBCC03 /* Directory PrinterTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +100,30 @@
 			productReference = 49937A012F45036E0041629C /* Directory Printer.app */;
 			productType = "com.apple.product-type.application";
 		};
+		49937A142F450400AABBCC06 /* Directory PrinterTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 49937A1C2F450400AABBCC07 /* Build configuration list for PBXNativeTarget "Directory PrinterTests" */;
+			buildPhases = (
+				49937A112F450400AABBCC08 /* Sources */,
+				49937A122F450400AABBCC05 /* Frameworks */,
+				49937A132F450400AABBCC09 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				49937A212F450400AABBCC0A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				49937A302F450400AABBCC04 /* Directory PrinterTests */,
+			);
+			name = "Directory PrinterTests";
+			packageProductDependencies = (
+				49937B002F450400AABBCC00 /* SwiftCheck */,
+			);
+			productName = "Directory PrinterTests";
+			productReference = 49937A152F450400AABBCC03 /* Directory PrinterTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -83,6 +137,10 @@
 					49937A002F45036E0041629C = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					49937A142F450400AABBCC06 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 49937A002F45036E0041629C;
+					};
 				};
 			};
 			buildConfigurationList = 499379FC2F45036E0041629C /* Build configuration list for PBXProject "Directory Printer" */;
@@ -94,18 +152,29 @@
 			);
 			mainGroup = 499379F82F45036E0041629C;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				49937AF02F450400AABBCC0B /* XCRemoteSwiftPackageReference "SwiftCheck" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 49937A022F45036E0041629C /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				49937A002F45036E0041629C /* Directory Printer */,
+				49937A142F450400AABBCC06 /* Directory PrinterTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		499379FF2F45036E0041629C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		49937A132F450400AABBCC09 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +191,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		49937A112F450400AABBCC08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		49937A212F450400AABBCC0A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 49937A002F45036E0041629C /* Directory Printer */;
+			targetProxy = 49937A202F450400AABBCC02 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		49937A0A2F45036E0041629C /* Debug */ = {
@@ -179,7 +263,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -237,7 +321,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -256,14 +340,27 @@
 				DEVELOPMENT_TEAM = W36MPC6Y9T;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Directory Printer";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "uk.co.rhodrihughes.Directory-Printer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -288,14 +385,27 @@
 				DEVELOPMENT_TEAM = W36MPC6Y9T;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Directory Printer";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "uk.co.rhodrihughes.Directory-Printer";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -306,6 +416,46 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		49937A1D2F450400AABBCC0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W36MPC6Y9T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "uk.co.rhodrihughes.Directory-PrinterTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Directory Printer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Directory Printer";
+			};
+			name = Debug;
+		};
+		49937A1E2F450400AABBCC0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W36MPC6Y9T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "uk.co.rhodrihughes.Directory-PrinterTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Directory Printer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Directory Printer";
 			};
 			name = Release;
 		};
@@ -330,7 +480,35 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		49937A1C2F450400AABBCC07 /* Build configuration list for PBXNativeTarget "Directory PrinterTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				49937A1D2F450400AABBCC0C /* Debug */,
+				49937A1E2F450400AABBCC0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		49937AF02F450400AABBCC0B /* XCRemoteSwiftPackageReference "SwiftCheck" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/typelift/SwiftCheck.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		49937B002F450400AABBCC00 /* SwiftCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 49937AF02F450400AABBCC0B /* XCRemoteSwiftPackageReference "SwiftCheck" */;
+			productName = SwiftCheck;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 499379F92F45036E0041629C /* Project object */;
 }

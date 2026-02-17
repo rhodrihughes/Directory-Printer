@@ -13,5 +13,10 @@ struct Directory_PrinterApp: App {
         WindowGroup {
             ContentView()
         }
+        .defaultSize(width: 420, height: 480)
+
+        Settings {
+            PreferencesView()
+        }
     }
 }
