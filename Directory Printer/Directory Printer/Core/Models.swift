@@ -7,7 +7,7 @@ struct FileNode: Codable, Equatable {
     let name: String
     let path: String
     let isDirectory: Bool
-    let size: Int64          // bytes; 0 for directories
+    var size: Int64           // bytes; sum of children for directories
     let dateModified: Date
     let isSymlink: Bool
     var children: [FileNode] // empty for files

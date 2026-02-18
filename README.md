@@ -39,3 +39,25 @@ dirprinter <root-folder> <output-file> [--include-hidden] [--link-files]
 ## License
 
 See LICENSE.txt.
+
+## Changelog
+
+### v1.2
+
+**Faster scanning**
+- Scanning is much faster, especially on network drives
+- The app stays responsive while a scan is running
+
+**Progress view**
+- Clicking Scan now shows a full-screen progress view with a live count of files and folders found
+- Fixed a freeze that could occur right when a scan started
+
+**HTML output**
+- Folder sizes now reflect the total size of everything inside them
+- Folders in the file list are no longer shown in bold
+- Large snapshots now show a loading indicator when opened in a browser, instead of a blank screen
+
+**Other fixes**
+- The output filename now updates automatically when you drag in a new folder
+- If the app can't write to the suggested output location, it will ask you to pick one before scanning starts
+- Fixed a bug where clicking an open folder in the sidebar would re-expand it instead of closing it

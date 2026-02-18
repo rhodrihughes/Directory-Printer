@@ -58,33 +58,15 @@ struct CLIRunner {
             linkToFiles: parsed.linkFiles
         )
 
-        // Run scan synchronously using DispatchSemaphore to bridge async → sync
+        // Run scan synchronously — scanner.scan() is a blocking call.
         let scanner = DirectoryScanner()
-        let semaphore = DispatchSemaphore(value: 0)
-        var scanResult: ScanResult?
-        var scanError: Error?
-
-        Task {
-            do {
-                let result = try await scanner.scan(options: options) { progress in
-                    print("Scanning: \(progress.currentFolder) (\(progress.filesDiscovered) files found)")
-                }
-                scanResult = result
-            } catch {
-                scanError = error
+        let result: ScanResult
+        do {
+            result = try scanner.scan(options: options) { progress in
+                print("Scanning: \(progress.currentFolder) (\(progress.filesDiscovered) files found)")
             }
-            semaphore.signal()
-        }
-
-        semaphore.wait()
-
-        if let err = scanError {
-            printStderr("Error during scan: \(err.localizedDescription)")
-            exit(1)
-        }
-
-        guard let result = scanResult else {
-            printStderr("Error: scan produced no result.")
+        } catch {
+            printStderr("Error during scan: \(error.localizedDescription)")
             exit(1)
         }
 

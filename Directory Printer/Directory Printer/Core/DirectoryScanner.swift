@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Protocol
 
 protocol DirectoryScannerProtocol {
-    func scan(options: ScanOptions, progress: @escaping (ScanProgress) -> Void) async throws -> ScanResult
+    func scan(options: ScanOptions, progress: @escaping (ScanProgress) -> Void) throws -> ScanResult
     func cancel()
 }
 
@@ -29,31 +29,41 @@ class DirectoryScanner: DirectoryScannerProtocol {
 
     private var isCancelled = false
 
+    // Resource keys to pre-fetch in bulk — avoids per-item round-trips on SMB/AFP.
+    private static let resourceKeys: Set<URLResourceKey> = [
+        .nameKey,
+        .isDirectoryKey,
+        .isSymbolicLinkKey,
+        .fileSizeKey,
+        .contentModificationDateKey
+    ]
+
     func cancel() {
         isCancelled = true
     }
 
-    func scan(options: ScanOptions, progress: @escaping (ScanProgress) -> Void) async throws -> ScanResult {
+    func scan(options: ScanOptions, progress: @escaping (ScanProgress) -> Void) throws -> ScanResult {
         isCancelled = false
 
-        let rootPath = options.rootPath.path
+        let rootURL = options.rootPath
         let fm = FileManager.default
 
-        // Validate root
+        // Already running off MainActor (called from a detached task in ScanViewModel).
+        // Validate root, then scan directly on this background thread.
         var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: rootPath, isDirectory: &isDir) else {
-            throw ScanError.rootNotFound(rootPath)
+        guard fm.fileExists(atPath: rootURL.path, isDirectory: &isDir) else {
+            throw ScanError.rootNotFound(rootURL.path)
         }
         guard isDir.boolValue else {
-            throw ScanError.rootNotDirectory(rootPath)
+            throw ScanError.rootNotDirectory(rootURL.path)
         }
 
         var totalFiles = 0
         var totalFolders = 0
         var warnings: [String] = []
 
-        let root = try scanDirectory(
-            path: rootPath,
+        let root = try buildTree(
+            url: rootURL,
             options: options,
             fm: fm,
             totalFiles: &totalFiles,
@@ -67,15 +77,17 @@ class DirectoryScanner: DirectoryScannerProtocol {
             totalFiles: totalFiles,
             totalFolders: totalFolders,
             scanDate: Date(),
-            rootPath: rootPath,
+            rootPath: rootURL.path,
             warnings: warnings
         )
     }
 
     // MARK: - Private
 
-    private func scanDirectory(
-        path: String,
+    /// Builds a FileNode tree using FileManager.enumerator with pre-fetched resource keys.
+    /// The enumerator lets the OS batch metadata requests, which is critical for SMB performance.
+    private func buildTree(
+        url: URL,
         options: ScanOptions,
         fm: FileManager,
         totalFiles: inout Int,
@@ -84,119 +96,150 @@ class DirectoryScanner: DirectoryScannerProtocol {
         progress: @escaping (ScanProgress) -> Void
     ) throws -> FileNode {
 
-        // Emit progress for this directory
+        // Emit initial progress
+        progress(ScanProgress(currentFolder: url.path, filesDiscovered: 0, foldersDiscovered: 0))
+
+        // Flat list of all descendants with pre-fetched metadata.
+        // skipDescendants is called on symlinks to avoid following them.
+        guard let enumerator = fm.enumerator(
+            at: url,
+            includingPropertiesForKeys: Array(Self.resourceKeys),
+            options: options.includeHidden ? [] : [.skipsHiddenFiles]
+        ) else {
+            throw ScanError.rootNotFound(url.path)
+        }
+
+        // Build a path → node map so we can attach children to parents in one pass.
+        var nodeMap: [String: FileNode] = [:]
+        var childMap: [String: [String]] = [:]  // parent path → ordered child paths
+
+        // Seed root
+        let rootVals = try url.resourceValues(forKeys: Self.resourceKeys)
+        nodeMap[url.path] = FileNode(
+            name: url.lastPathComponent,
+            path: url.path,
+            isDirectory: true,
+            size: 0,
+            dateModified: rootVals.contentModificationDate ?? Date(),
+            isSymlink: false,
+            children: []
+        )
+        childMap[url.path] = []
+
+        // Throttle progress by wall-clock time so the UI gets steady ~4 updates/sec
+        // regardless of how fast or slow the scan is. This avoids flooding MainActor
+        // with thousands of queued tasks on large directories.
+        var lastProgressTime = CFAbsoluteTimeGetCurrent()
+        let progressInterval: CFAbsoluteTime = 0.25  // seconds
+
+        for case let itemURL as URL in enumerator {
+            if isCancelled { throw ScanError.cancelled }
+
+            let vals: URLResourceValues
+            do {
+                vals = try itemURL.resourceValues(forKeys: Self.resourceKeys)
+            } catch {
+                warnings.append("Cannot access \(itemURL.path): \(error.localizedDescription)")
+                continue
+            }
+
+            let isSymlink = vals.isSymbolicLink ?? false
+            let isDirectory = !isSymlink && (vals.isDirectory ?? false)
+            let name = vals.name ?? itemURL.lastPathComponent
+            let dateModified = vals.contentModificationDate ?? Date()
+            let size = isDirectory ? 0 : Int64(vals.fileSize ?? 0)
+            let parentPath = itemURL.deletingLastPathComponent().path
+
+            // Don't descend into symlinks
+            if isSymlink { enumerator.skipDescendants() }
+
+            let node = FileNode(
+                name: name,
+                path: itemURL.path,
+                isDirectory: isDirectory,
+                size: size,
+                dateModified: dateModified,
+                isSymlink: isSymlink,
+                children: []
+            )
+
+            nodeMap[itemURL.path] = node
+            childMap[itemURL.path] = isDirectory ? [] : nil
+            childMap[parentPath, default: []].append(itemURL.path)
+
+            if isDirectory {
+                totalFolders += 1
+            } else {
+                totalFiles += 1
+            }
+
+            let now = CFAbsoluteTimeGetCurrent()
+            if now - lastProgressTime >= progressInterval {
+                lastProgressTime = now
+                progress(ScanProgress(
+                    currentFolder: itemURL.path,
+                    filesDiscovered: totalFiles,
+                    foldersDiscovered: totalFolders
+                ))
+            }
+        }
+
+        // Final progress update
         progress(ScanProgress(
-            currentFolder: path,
+            currentFolder: url.path,
             filesDiscovered: totalFiles,
             foldersDiscovered: totalFolders
         ))
 
-        // Attributes for the directory itself
-        let dirAttrs = (try? fm.attributesOfItem(atPath: path)) ?? [:]
-        let dirDate = dirAttrs[.modificationDate] as? Date ?? Date()
-        let dirName = (path as NSString).lastPathComponent
+        // Roll up directory sizes: sum each folder's descendant file sizes.
+        // Walk childMap bottom-up so parent sizes include nested children.
+        computeDirectorySizes(rootPath: url.path, nodeMap: &nodeMap, childMap: childMap)
 
-        // Enumerate contents (shallow — we recurse manually)
-        let contents: [String]
-        do {
-            contents = try fm.contentsOfDirectory(atPath: path)
-        } catch {
-            warnings.append("Cannot read directory \(path): \(error.localizedDescription)")
-            return FileNode(
-                name: dirName,
-                path: path,
-                isDirectory: true,
-                size: 0,
-                dateModified: dirDate,
-                isSymlink: false,
-                children: []
-            )
-        }
-
-        var children: [FileNode] = []
-
-        for itemName in contents {
-            if isCancelled { throw ScanError.cancelled }
-
-            // Hidden file filter
-            if !options.includeHidden && itemName.hasPrefix(".") { continue }
-
-            let itemPath = (path as NSString).appendingPathComponent(itemName)
-
-            // Detect symlink without following it
-            let isSymlink = isSymbolicLink(at: itemPath, fm: fm)
-
-            // Collect attributes (lstat — does not follow symlinks)
-            let attrs: [FileAttributeKey: Any]
-            do {
-                attrs = try fm.attributesOfItem(atPath: itemPath)
-            } catch {
-                warnings.append("Cannot access \(itemPath): \(error.localizedDescription)")
-                continue
-            }
-
-            let dateModified = attrs[.modificationDate] as? Date ?? Date()
-            let fileType = attrs[.type] as? FileAttributeType
-
-            if isSymlink {
-                // Record symlink as-is, never follow
-                let size = attrs[.size] as? Int64 ?? 0
-                children.append(FileNode(
-                    name: itemName,
-                    path: itemPath,
-                    isDirectory: false,
-                    size: size,
-                    dateModified: dateModified,
-                    isSymlink: true,
-                    children: []
-                ))
-                totalFiles += 1
-            } else if fileType == .typeDirectory {
-                totalFolders += 1
-                let child = try scanDirectory(
-                    path: itemPath,
-                    options: options,
-                    fm: fm,
-                    totalFiles: &totalFiles,
-                    totalFolders: &totalFolders,
-                    warnings: &warnings,
-                    progress: progress
-                )
-                children.append(child)
-            } else {
-                let size = attrs[.size] as? Int64 ?? 0
-                children.append(FileNode(
-                    name: itemName,
-                    path: itemPath,
-                    isDirectory: false,
-                    size: size,
-                    dateModified: dateModified,
-                    isSymlink: false,
-                    children: []
-                ))
-                totalFiles += 1
-            }
-        }
-
-        return FileNode(
-            name: dirName,
-            path: path,
-            isDirectory: true,
-            size: 0,
-            dateModified: dirDate,
-            isSymlink: false,
-            children: children
-        )
+        // Assemble tree bottom-up: attach children to their parents.
+        return assembleTree(rootPath: url.path, nodeMap: &nodeMap, childMap: childMap)
     }
 
-    /// Returns true if the item at `path` is a symbolic link (does not follow the link).
-    private func isSymbolicLink(at path: String, fm: FileManager) -> Bool {
-        // Use lstat via FileManager's destinationOfSymbolicLink — if it succeeds the item is a symlink.
-        // More reliably: check the file type from attributesOfItem which uses lstat on macOS.
-        if let attrs = try? fm.attributesOfItem(atPath: path),
-           let type_ = attrs[.type] as? FileAttributeType {
-            return type_ == .typeSymbolicLink
+    /// Computes directory sizes by summing children recursively (bottom-up).
+    /// Mutates nodeMap in place so directory nodes have their total size set.
+    @discardableResult
+    private func computeDirectorySizes(
+        rootPath: String,
+        nodeMap: inout [String: FileNode],
+        childMap: [String: [String]]
+    ) -> Int64 {
+        guard var node = nodeMap[rootPath] else { return 0 }
+
+        guard node.isDirectory, let childPaths = childMap[rootPath] else {
+            return node.size
         }
-        return false
+
+        var total: Int64 = 0
+        for childPath in childPaths {
+            total += computeDirectorySizes(rootPath: childPath, nodeMap: &nodeMap, childMap: childMap)
+        }
+
+        node.size = total
+        nodeMap[rootPath] = node
+        return total
+    }
+
+    /// Recursively assembles the FileNode tree from the flat nodeMap + childMap.
+    private func assembleTree(
+        rootPath: String,
+        nodeMap: inout [String: FileNode],
+        childMap: [String: [String]]
+    ) -> FileNode {
+        guard var node = nodeMap[rootPath] else {
+            return FileNode(name: "", path: rootPath, isDirectory: true, size: 0,
+                            dateModified: Date(), isSymlink: false, children: [])
+        }
+
+        if let childPaths = childMap[rootPath] {
+            node.children = childPaths.map { childPath in
+                assembleTree(rootPath: childPath, nodeMap: &nodeMap, childMap: childMap)
+            }
+        }
+
+        return node
     }
 }

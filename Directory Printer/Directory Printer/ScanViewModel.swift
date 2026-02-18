@@ -1,9 +1,5 @@
 // ScanViewModel.swift
 // Directory Printer
-//
-// ObservableObject view model that drives the macOS GUI.
-// All UI-state mutations happen on @MainActor; panel calls are dispatched
-// to the main thread explicitly so they work from async contexts.
 
 import AppKit
 import Combine
@@ -15,7 +11,9 @@ class ScanViewModel: ObservableObject {
 
     // MARK: - Published state
 
-    @Published var rootFolder: URL?
+    @Published var rootFolder: URL? {
+        didSet { outputPath = rootFolder.map { suggestedOutputURL(for: $0) } }
+    }
     @Published var outputPath: URL?
     @Published var includeHidden: Bool = false
     @Published var linkToFiles: Bool = false
@@ -29,10 +27,10 @@ class ScanViewModel: ObservableObject {
     // MARK: - Private
 
     private let scanner = DirectoryScanner()
+    private let workQueue = DispatchQueue(label: "DirectoryPrinter.scan", qos: .userInitiated)
 
     // MARK: - Folder / file pickers
 
-    /// Opens a native macOS folder-picker panel (Req 8.1).
     func selectRootFolder() {
         let panel = NSOpenPanel()
         panel.title = "Select Root Folder"
@@ -40,14 +38,11 @@ class ScanViewModel: ObservableObject {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = false
-
         if panel.runModal() == .OK, let url = panel.url {
-            rootFolder = url  // didSet handles outputPath suggestion
+            rootFolder = url
         }
     }
 
-    /// Builds a suggested output URL: FolderName-directoryprintout-YYYY-MM-DD-HHmm.html
-    /// placed next to the selected folder.
     private func suggestedOutputURL(for folder: URL) -> URL {
         let folderName = folder.lastPathComponent
         let formatter = DateFormatter()
@@ -57,7 +52,6 @@ class ScanViewModel: ObservableObject {
         return folder.deletingLastPathComponent().appendingPathComponent(filename)
     }
 
-    /// Opens a native macOS save panel for the output HTML file (Req 8.2).
     func selectOutputPath() {
         let panel = NSSavePanel()
         panel.title = "Save Snapshot As"
@@ -66,7 +60,6 @@ class ScanViewModel: ObservableObject {
             ?? "snapshot.html"
         panel.allowedContentTypes = [.html]
         panel.canCreateDirectories = true
-
         if panel.runModal() == .OK {
             outputPath = panel.url
         }
@@ -74,8 +67,7 @@ class ScanViewModel: ObservableObject {
 
     // MARK: - Scan lifecycle
 
-    /// Runs the full scan → generate → write pipeline asynchronously (Req 8.3–8.6).
-    func startScan() async {
+    func startScan() {
         guard let root = rootFolder else {
             errorMessage = "Please select a root folder before scanning."
             return
@@ -83,6 +75,24 @@ class ScanViewModel: ObservableObject {
         guard let output = outputPath else {
             errorMessage = "Please choose an output file path before scanning."
             return
+        }
+
+        // Verify the output directory is writable before starting a potentially long scan.
+        // If not (common with auto-suggested paths outside the sandboxed input folder),
+        // prompt the user with a save panel to grant write access.
+        let outputDir = output.deletingLastPathComponent()
+        if !FileManager.default.isWritableFile(atPath: outputDir.path) {
+            let panel = NSSavePanel()
+            panel.title = "Choose Output Location"
+            panel.message = "Confirm where to save the snapshot to grant access."
+            panel.nameFieldStringValue = output.lastPathComponent
+            panel.allowedContentTypes = [.html]
+            panel.canCreateDirectories = true
+            guard panel.runModal() == .OK, let newOutput = panel.url else {
+                return  // user cancelled
+            }
+            outputPath = newOutput
+            return startScan()  // retry with the new path
         }
 
         // Reset state
@@ -93,55 +103,64 @@ class ScanViewModel: ObservableObject {
         progress = nil
         scanPhase = "Scanning…"
 
-        // Yield so SwiftUI can render the spinner before we start work
-        await Task.yield()
-
         let options = ScanOptions(
             rootPath: root,
             includeHidden: includeHidden,
             linkToFiles: linkToFiles
         )
 
-        do {
-            // Run the scan; progress callbacks arrive on arbitrary threads so
-            // we hop back to MainActor before mutating published state.
-            let result = try await scanner.scan(options: options) { [weak self] scanProgress in
-                guard let self else { return }
-                Task { @MainActor in
-                    self.progress = scanProgress
+        // Capture scanner reference before dispatching to avoid @MainActor access from GCD.
+        let scanner = self.scanner
+        let logoB64 = PreferencesManager.shared.logoBase64
+
+        // Use GCD to guarantee a real background thread — no actor inference,
+        // no cooperative thread pool ambiguity. The main thread stays completely free.
+        workQueue.async { [weak self] in
+            do {
+                // 1. Scan
+                let result = try scanner.scan(options: options) { scanProgress in
+                    DispatchQueue.main.async { [weak self] in
+                        self?.progress = scanProgress
+                    }
+                }
+
+                DispatchQueue.main.async { [weak self] in
+                    self?.scanPhase = "Generating HTML…"
+                }
+
+                // 2. Generate HTML
+                let html = try HTMLGenerator.generate(
+                    from: result, options: options, logoBase64: logoB64
+                )
+
+                DispatchQueue.main.async { [weak self] in
+                    self?.scanPhase = "Writing file…"
+                }
+
+                // 3. Write to disk
+                try html.write(to: output, atomically: true, encoding: .utf8)
+
+                // 4. Done
+                DispatchQueue.main.async { [weak self] in
+                    self?.isScanning = false
+                    self?.lastOutputURL = output
+                    self?.showSuccessAlert = true
+                }
+
+            } catch ScanError.cancelled {
+                DispatchQueue.main.async { [weak self] in
+                    self?.isScanning = false
+                    self?.progress = nil
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    self?.isScanning = false
+                    self?.errorMessage = error.localizedDescription
                 }
             }
-
-            // Generate HTML off the main thread so the spinner keeps animating
-            scanPhase = "Generating HTML…"
-            await Task.yield()
-            let logoB64 = PreferencesManager.shared.logoBase64
-            let html = try await Task.detached(priority: .userInitiated) {
-                try HTMLGenerator.generate(from: result, options: options, logoBase64: logoB64)
-            }.value
-
-            // Write to disk off the main thread
-            scanPhase = "Writing file…"
-            await Task.yield()
-            try await Task.detached(priority: .userInitiated) {
-                try html.write(to: output, atomically: true, encoding: .utf8)
-            }.value
-
-            // Success
-            isScanning = false
-            lastOutputURL = output
-            showSuccessAlert = true
-
-        } catch ScanError.cancelled {
-            isScanning = false
-            progress = nil
-        } catch {
-            isScanning = false
-            errorMessage = error.localizedDescription
         }
     }
 
-    /// Cancels an in-progress scan gracefully (Req 8.4).
     func cancelScan() {
         scanner.cancel()
         isScanning = false
@@ -149,7 +168,6 @@ class ScanViewModel: ObservableObject {
 
     // MARK: - Convenience
 
-    /// Opens the last successfully generated snapshot in the default browser (Req 8.5).
     func openInBrowser() {
         guard let url = lastOutputURL else { return }
         NSWorkspace.shared.open(url)

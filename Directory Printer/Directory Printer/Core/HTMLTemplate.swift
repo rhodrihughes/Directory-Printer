@@ -230,10 +230,32 @@ enum HTMLTemplate {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        #loading-overlay {
+          position: fixed;
+          inset: 0;
+          background: #1e1e1e;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          gap: 16px;
+        }
+        .loading-text {
+          font-size: 13px;
+          color: #888;
+        }
       </style>
     </head>
     <body>
-      <div id="header">
+      <div id="loading-overlay">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="15" stroke="#3e3e3e" stroke-width="3"/>
+          <path d="M18 3 A15 15 0 0 1 33 18" stroke="#007acc" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="loading-text">Loading snapshot…</div>
+      </div>
+      <div id="header" style="display:none">
         <div id="header-title-block">
           <h1>Directory Printout of:</h1>
           <div id="header-path"></div>
@@ -244,11 +266,11 @@ enum HTMLTemplate {
         </div>
         /*SNAPSHOT_LOGO*/
       </div>
-      <div id="toolbar">
+      <div id="toolbar" style="display:none">
         <input type="text" id="search-input" placeholder="Search files…" autocomplete="off" spellcheck="false">
         <span id="stats"></span>
       </div>
-      <div id="main">
+      <div id="main" style="display:none">
         <div id="sidebar"></div>
         <div id="resizer"></div>
         <div id="content">
@@ -357,18 +379,6 @@ enum HTMLTemplate {
           rowEl.classList.add('selected');
           selectedNodePath = node.path;
 
-          // Expand this node's children in the sidebar if it has any
-          const treeNode = rowEl.parentElement;
-          if (treeNode) {
-            const childrenDiv = treeNode.querySelector(':scope > .tree-children');
-            const expander = rowEl.querySelector('.tree-expander');
-            const icon = rowEl.querySelector('.tree-icon');
-            if (childrenDiv && childrenDiv.classList.contains('collapsed')) {
-              childrenDiv.classList.remove('collapsed');
-              if (icon) icon.textContent = '📂';
-            }
-          }
-
           const dirs = (node.children || []).filter(c => c.isDirectory);
           const files = (node.children || []).filter(c => !c.isDirectory);
           currentFiles = [...dirs, ...files];
@@ -466,7 +476,7 @@ enum HTMLTemplate {
             const tdName = document.createElement('td');
             if (f.isDirectory) {
               const btn = document.createElement('span');
-              btn.style.cssText = 'cursor:pointer;font-weight:700;';
+              btn.style.cssText = 'cursor:pointer;';
               btn.textContent = '📁 ' + f.name;
               btn.title = f.path;
               btn.addEventListener('click', () => navigateToFolder(f.path));
@@ -676,6 +686,12 @@ enum HTMLTemplate {
               }
             }, 300);
           });
+
+          // Hide loading overlay, show app
+          document.getElementById('loading-overlay').style.display = 'none';
+          document.getElementById('header').style.display = '';
+          document.getElementById('toolbar').style.display = '';
+          document.getElementById('main').style.display = '';
         })();
       </script>
     </body>
