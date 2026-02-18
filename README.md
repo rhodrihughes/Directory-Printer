@@ -4,6 +4,18 @@
 
 <h1 align="center">Directory Printer</h1>
 
+<p align="center">
+  <a href="https://github.com/rhodrihughes/Directory-Printer/releases/latest">
+    <img src="https://img.shields.io/github/v/release/rhodrihughes/Directory-Printer?label=⬇%20Download%20Latest&style=for-the-badge&color=brightgreen&logoColor=white" alt="Download latest release">
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-blue?style=flat-square&logo=apple" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Swift-5.0-orange?style=flat-square&logo=swift" alt="Swift 5.0">
+  <img src="https://img.shields.io/badge/License-GPLv3-green?style=flat-square" alt="GPLv3 License">
+</p>
+
 <p align="center">A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents.
 The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.
 Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.</p>
