@@ -54,6 +54,10 @@ See LICENSE.txt.
 
 ## Changelog
 
+### v1.2.1
+
+ - Ventura saving fix
+
 ### v1.2
 
 **Faster scanning**
