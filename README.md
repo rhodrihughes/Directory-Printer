@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/rhodrihughes/Directory-Printer/releases/latest">
-    <img src="https://img.shields.io/github/v/release/rhodrihughes/Directory-Printer?label=⬇%20Download%20Latest&style=for-the-badge&color=brightgreen&logoColor=white" alt="Download latest release">
+    <img src="https://img.shields.io/github/v/release/rhodrihughes/Directory-Printer?label=Download%20Latest&style=for-the-badge&color=brightgreen&logo=github&logoColor=white" alt="Download latest release">
   </a>
 </p>
 
