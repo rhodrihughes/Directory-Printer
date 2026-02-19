@@ -29,6 +29,36 @@ class ScanViewModel: ObservableObject {
     private let scanner = DirectoryScanner()
     private let workQueue = DispatchQueue(label: "DirectoryPrinter.scan", qos: .userInitiated)
 
+    // MARK: - Security-scoped resource access
+
+    private var rootFolderBookmark: Data?
+
+    private func startAccessingRootFolder(_ url: URL) {
+        // Stop accessing any previously held resource
+        stopAccessingRootFolder()
+        // On Ventura the sandbox requires explicit startAccessingSecurityScopedResource
+        // for URLs obtained from NSOpenPanel before we can derive sibling paths.
+        _ = url.startAccessingSecurityScopedResource()
+        rootFolderBookmark = try? url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+    }
+
+    private func stopAccessingRootFolder() {
+        guard let bookmark = rootFolderBookmark,
+              let url = try? URL(
+                resolvingBookmarkData: bookmark,
+                options: .withSecurityScope,
+                relativeTo: nil,
+                bookmarkDataIsStale: nil
+              )
+        else { return }
+        url.stopAccessingSecurityScopedResource()
+        rootFolderBookmark = nil
+    }
+
     // MARK: - Folder / file pickers
 
     func selectRootFolder() {
@@ -39,6 +69,7 @@ class ScanViewModel: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = false
         if panel.runModal() == .OK, let url = panel.url {
+            startAccessingRootFolder(url)
             rootFolder = url
         }
     }
@@ -75,24 +106,6 @@ class ScanViewModel: ObservableObject {
         guard let output = outputPath else {
             errorMessage = "Please choose an output file path before scanning."
             return
-        }
-
-        // Verify the output directory is writable before starting a potentially long scan.
-        // If not (common with auto-suggested paths outside the sandboxed input folder),
-        // prompt the user with a save panel to grant write access.
-        let outputDir = output.deletingLastPathComponent()
-        if !FileManager.default.isWritableFile(atPath: outputDir.path) {
-            let panel = NSSavePanel()
-            panel.title = "Choose Output Location"
-            panel.message = "Confirm where to save the snapshot to grant access."
-            panel.nameFieldStringValue = output.lastPathComponent
-            panel.allowedContentTypes = [.html]
-            panel.canCreateDirectories = true
-            guard panel.runModal() == .OK, let newOutput = panel.url else {
-                return  // user cancelled
-            }
-            outputPath = newOutput
-            return startScan()  // retry with the new path
         }
 
         // Reset state
@@ -137,8 +150,17 @@ class ScanViewModel: ObservableObject {
                     self?.scanPhase = "Writing file…"
                 }
 
-                // 3. Write to disk
-                try html.write(to: output, atomically: true, encoding: .utf8)
+                // 3. Write to disk — if this fails due to sandbox permissions,
+                // surface a clear error so the user can pick a different location.
+                do {
+                    try html.write(to: output, atomically: true, encoding: .utf8)
+                } catch {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.isScanning = false
+                        self?.errorMessage = "Could not write to the selected location. Please use \"Choose Output File\" to pick a writable destination.\n\n(\(error.localizedDescription))"
+                    }
+                    return
+                }
 
                 // 4. Done
                 DispatchQueue.main.async { [weak self] in
