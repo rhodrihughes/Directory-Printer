@@ -47,14 +47,14 @@ class ScanViewModel: ObservableObject {
     }
 
     private func stopAccessingRootFolder() {
-        guard let bookmark = rootFolderBookmark,
-              let url = try? URL(
-                resolvingBookmarkData: bookmark,
-                options: .withSecurityScope,
-                relativeTo: nil,
-                bookmarkDataIsStale: nil
-              )
-        else { return }
+        guard let bookmark = rootFolderBookmark else { return }
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else { return }
         url.stopAccessingSecurityScopedResource()
         rootFolderBookmark = nil
     }
