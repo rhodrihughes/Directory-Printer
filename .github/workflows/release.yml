@@ -1,0 +1,45 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project "Directory Printer/Directory Printer.xcodeproj" \
+            -scheme "Directory Printer" \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package
+        run: |
+          cd build/Build/Products/Release
+          zip -r "Directory-Printer-${{ github.ref_name }}.zip" "Directory Printer.app"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Directory Printer ${{ github.ref_name }}
+          body: |
+            ## Directory Printer ${{ github.ref_name }}
+
+            > **Note:** This app is unsigned. On first launch, right-click the app and choose **Open** to bypass Gatekeeper.
+          files: build/Build/Products/Release/Directory-Printer-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

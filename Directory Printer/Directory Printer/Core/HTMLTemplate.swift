@@ -84,10 +84,10 @@ enum HTMLTemplate {
         }
         #search-input {
           flex: 1;
-          max-width: 320px;
+          max-width: 280px;
           background: #3c3c3c;
           border: 1px solid #555;
-          border-radius: 4px;
+          border-radius: 4px 0 0 4px;
           color: #d4d4d4;
           padding: 4px 8px;
           font-size: 12px;
@@ -95,6 +95,20 @@ enum HTMLTemplate {
         }
         #search-input:focus { border-color: #007acc; }
         #search-input::placeholder { color: #666; }
+        #search-btn {
+          background: #3c3c3c;
+          border: 1px solid #555;
+          border-left: none;
+          border-radius: 0 4px 4px 0;
+          color: #d4d4d4;
+          padding: 4px 10px;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        #search-btn:hover { background: #007acc; border-color: #007acc; color: #fff; }
+        #search-btn:active { background: #005f9e; }
         #stats {
           margin-left: auto;
           font-size: 11px;
@@ -193,9 +207,33 @@ enum HTMLTemplate {
         th:hover { color: #d4d4d4; }
         th.sort-asc::after { content: " ▲"; font-size: 9px; }
         th.sort-desc::after { content: " ▼"; font-size: 9px; }
+        th { position: relative; }
         th:nth-child(1) { width: 45%; }
         th:nth-child(2) { width: 30%; }
         th:nth-child(3) { width: 25%; text-align: right; }
+        .col-resizer {
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 6px;
+          cursor: col-resize;
+          z-index: 2;
+          user-select: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .col-resizer::after {
+          content: '';
+          display: block;
+          width: 1px;
+          height: 60%;
+          background: #4a4a4a;
+          border-radius: 1px;
+          transition: background 0.1s;
+        }
+        .col-resizer:hover::after, .col-resizer.dragging::after { background: #007acc; }
         td {
           padding: 5px 12px;
           border-bottom: 1px solid #2a2a2a;
@@ -268,6 +306,7 @@ enum HTMLTemplate {
       </div>
       <div id="toolbar" style="display:none">
         <input type="text" id="search-input" placeholder="Search files…" autocomplete="off" spellcheck="false">
+        <button id="search-btn">Search</button>
         <span id="stats"></span>
       </div>
       <div id="main" style="display:none">
@@ -299,6 +338,59 @@ enum HTMLTemplate {
               hour: '2-digit', minute: '2-digit'
             }).format(new Date(iso));
           } catch (e) { return iso; }
+        }
+
+        // ── File type icons ────────────────────────────────────────────────────
+
+        const SVG_ICONS = {
+          folder: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.086a1.5 1.5 0 0 1 1.06.44L7.56 3.5H13.5A1.5 1.5 0 0 1 15 5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9Z" fill="#C8A84B" fill-opacity="0.85"/></svg>',
+          folder_open: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.086a1.5 1.5 0 0 1 1.06.44L7.56 3.5H13.5A1.5 1.5 0 0 1 15 5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9Z" fill="#C8A84B" fill-opacity="0.55"/><path d="M1 6.5h14l-1.5 6H2.5L1 6.5Z" fill="#C8A84B" fill-opacity="0.85"/></svg>',
+          image:  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="#888" stroke-width="1.2"/><circle cx="5.5" cy="6" r="1.2" fill="#888"/><path d="M1.5 10.5l3.5-3 3 3 2-2 3.5 3.5" stroke="#888" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+          video:  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="3" width="10" height="10" rx="1.5" stroke="#888" stroke-width="1.2"/><path d="M11 6.5l4-2v7l-4-2V6.5Z" stroke="#888" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+          audio:  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6 A2.5 2.5 0 0 1 4 10" stroke="#888" stroke-width="1.3" stroke-linecap="round" fill="none"/><path d="M6.5 4 A5.5 5.5 0 0 1 6.5 12" stroke="#888" stroke-width="1.3" stroke-linecap="round" fill="none"/><path d="M9 2 A8 8 0 0 1 9 14" stroke="#888" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>',
+          code:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="5,4 1,8 5,12" stroke="#888" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><polyline points="11,4 15,8 11,12" stroke="#888" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="9.5" y1="2.5" x2="6.5" y2="13.5" stroke="#888" stroke-width="1.2" stroke-linecap="round"/></svg>',
+          text:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="#888" stroke-width="1.2"/><line x1="4.5" y1="5" x2="11.5" y2="5" stroke="#888" stroke-width="1.1" stroke-linecap="round"/><line x1="4.5" y1="8" x2="11.5" y2="8" stroke="#888" stroke-width="1.1" stroke-linecap="round"/><line x1="4.5" y1="11" x2="8.5" y2="11" stroke="#888" stroke-width="1.1" stroke-linecap="round"/></svg>',
+          pdf:    '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="#888" stroke-width="1.2"/><line x1="4.5" y1="5" x2="11.5" y2="5" stroke="#888" stroke-width="1.1" stroke-linecap="round"/><line x1="4.5" y1="8" x2="11.5" y2="8" stroke="#888" stroke-width="1.1" stroke-linecap="round"/><line x1="4.5" y1="11" x2="8.5" y2="11" stroke="#888" stroke-width="1.1" stroke-linecap="round"/></svg>',
+          data:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="8" cy="4.5" rx="5.5" ry="2" stroke="#888" stroke-width="1.2"/><path d="M2.5 4.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3" stroke="#888" stroke-width="1.2"/><path d="M2.5 7.5v3c0 1.1 2.46 2 5.5 2s5.5-.9 5.5-2v-3" stroke="#888" stroke-width="1.2"/></svg>',
+          archive:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="#888" stroke-width="1.2"/><rect x="1.5" y="3" width="13" height="3" rx="1" stroke="#888" stroke-width="1.2"/><line x1="6.5" y1="8" x2="9.5" y2="8" stroke="#888" stroke-width="1.2" stroke-linecap="round"/></svg>',
+          binary: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="#888" stroke-width="1.2"/><text x="4.5" y="10.5" font-size="5.5" font-family="monospace" fill="#888">01</text></svg>',
+          font:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" stroke="#888" stroke-width="1.2"/><path d="M10 2v3h3" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          file:   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" stroke="#888" stroke-width="1.2"/><path d="M10 2v3h3" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        };
+
+        const EXT_MAP = {
+          // Images
+          png:'image', jpg:'image', jpeg:'image', gif:'image', webp:'image', svg:'image',
+          ico:'image', bmp:'image', tiff:'image', tif:'image', heic:'image', heif:'image', raw:'image',
+          // Video
+          mp4:'video', mov:'video', avi:'video', mkv:'video', wmv:'video', flv:'video', webm:'video', m4v:'video',
+          // Audio
+          mp3:'audio', wav:'audio', aac:'audio', flac:'audio', ogg:'audio', m4a:'audio', aiff:'audio',
+          // PDF
+          pdf:'pdf',
+          // Code
+          js:'code', ts:'code', jsx:'code', tsx:'code', mjs:'code', cjs:'code',
+          swift:'code', py:'code', rb:'code', java:'code', kt:'code', go:'code', rs:'code',
+          cpp:'code', c:'code', h:'code', cs:'code', php:'code', sh:'code', bash:'code', zsh:'code', fish:'code',
+          html:'code', htm:'code', css:'code', scss:'code', sass:'code', less:'code',
+          json:'code', xml:'code', yaml:'code', yml:'code', toml:'code', ini:'code', env:'code',
+          sql:'code', graphql:'code', gql:'code', vue:'code', svelte:'code',
+          // Text
+          txt:'text', md:'text', markdown:'text', rtf:'text', log:'text', csv:'text', tsv:'text',
+          // Data / DB
+          db:'data', sqlite:'data', sqlite3:'data', parquet:'data',
+          // Archives
+          zip:'archive', tar:'archive', gz:'archive', bz2:'archive', xz:'archive',
+          rar:'archive', '7z':'archive', dmg:'archive', pkg:'archive',
+          // Binaries / executables
+          exe:'binary', app:'binary', bin:'binary', dylib:'binary', so:'binary', dll:'binary', o:'binary',
+          // Fonts
+          ttf:'font', otf:'font', woff:'font', woff2:'font',
+        };
+
+        function fileIcon(node) {
+          const key = node.isDirectory ? 'folder' : (EXT_MAP[(node.name.split('.').pop() || '').toLowerCase()] || 'file');
+          return SVG_ICONS[key];
         }
 
         // ── State ──────────────────────────────────────────────────────────────
@@ -333,7 +425,8 @@ enum HTMLTemplate {
           // Folder icon
           const icon = document.createElement('span');
           icon.className = 'tree-icon';
-          icon.textContent = '📁';
+          icon.style.cssText = 'display:inline-flex;align-items:center;';
+          icon.innerHTML = SVG_ICONS.folder;
 
           // Name
           const name = document.createElement('span');
@@ -362,7 +455,7 @@ enum HTMLTemplate {
             if (hasChildren) {
               const isCollapsed = childrenDiv.classList.contains('collapsed');
               childrenDiv.classList.toggle('collapsed');
-              icon.textContent = isCollapsed ? '📂' : '📁';
+              icon.innerHTML = isCollapsed ? SVG_ICONS.folder_open : SVG_ICONS.folder;
             }
             selectFolder(node, row);
           });
@@ -474,22 +567,38 @@ enum HTMLTemplate {
 
             // Name cell
             const tdName = document.createElement('td');
+            const icon = document.createElement('span');
+            icon.style.cssText = 'margin-right:5px;flex-shrink:0;display:inline-flex;align-items:center;';
+            icon.innerHTML = fileIcon(f);
             if (f.isDirectory) {
               const btn = document.createElement('span');
-              btn.style.cssText = 'cursor:pointer;';
-              btn.textContent = '📁 ' + f.name;
+              btn.style.cssText = 'cursor:pointer;display:inline-flex;align-items:center;';
               btn.title = f.path;
+              btn.appendChild(icon);
+              const label = document.createElement('span');
+              label.textContent = f.name;
+              btn.appendChild(label);
               btn.addEventListener('click', () => navigateToFolder(f.path));
               tdName.appendChild(btn);
             } else if (CONFIG.linkToFiles && f.path) {
+              const wrap = document.createElement('span');
+              wrap.style.cssText = 'display:inline-flex;align-items:center;';
+              wrap.appendChild(icon);
               const a = document.createElement('a');
               a.href = 'file://' + f.path;
               a.textContent = f.name;
               a.title = f.path;
-              tdName.appendChild(a);
+              wrap.appendChild(a);
+              tdName.appendChild(wrap);
             } else {
-              tdName.textContent = f.name;
-              tdName.title = f.path || f.name;
+              const wrap = document.createElement('span');
+              wrap.style.cssText = 'display:inline-flex;align-items:center;';
+              wrap.appendChild(icon);
+              const label = document.createElement('span');
+              label.textContent = f.name;
+              label.title = f.path || f.name;
+              wrap.appendChild(label);
+              tdName.appendChild(wrap);
             }
             if (showPath) {
               const pathSpan = document.createElement('div');
@@ -513,6 +622,7 @@ enum HTMLTemplate {
           });
 
           table.appendChild(tbody);
+          addColResizers(table);
           return table;
         }
 
@@ -572,7 +682,7 @@ enum HTMLTemplate {
               if (childrenDiv && childrenDiv.classList.contains('collapsed')) {
                 childrenDiv.classList.remove('collapsed');
                 const icon = el.querySelector(':scope > .tree-row .tree-icon');
-                if (icon) icon.textContent = '📂';
+                if (icon) icon.innerHTML = SVG_ICONS.folder_open;
               }
             }
             el = el.parentElement;
@@ -636,6 +746,65 @@ enum HTMLTemplate {
           }
         })();
 
+        // ── Column resizing ────────────────────────────────────────────────────
+
+        // Stored column widths (percentages), applied to each new table built
+        let colWidths = [45, 30, 25];
+
+        function applyColWidths(table) {
+          const ths = table.querySelectorAll('thead th');
+          ths.forEach((th, i) => {
+            th.style.width = colWidths[i] + '%';
+          });
+        }
+
+        function addColResizers(table) {
+          applyColWidths(table);
+          const ths = table.querySelectorAll('thead th');
+          // Only add resizers to first two columns (last column fills remaining space)
+          for (let i = 0; i < ths.length - 1; i++) {
+            const handle = document.createElement('div');
+            handle.className = 'col-resizer';
+            handle.addEventListener('mousedown', makeColResizeHandler(table, i));
+            ths[i].appendChild(handle);
+          }
+        }
+
+        function makeColResizeHandler(table, colIndex) {
+          return function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const handle = e.target;
+            handle.classList.add('dragging');
+            const tableRect = table.getBoundingClientRect();
+            const tableWidth = tableRect.width;
+            const startX = e.clientX;
+            const startWidths = [...colWidths];
+
+            function onMove(ev) {
+              const delta = ev.clientX - startX;
+              const deltaPct = (delta / tableWidth) * 100;
+              let newCurrent = startWidths[colIndex] + deltaPct;
+              let newNext = startWidths[colIndex + 1] - deltaPct;
+              // Enforce minimum column width of 8%
+              if (newCurrent < 8) { newNext += newCurrent - 8; newCurrent = 8; }
+              if (newNext < 8) { newCurrent += newNext - 8; newNext = 8; }
+              colWidths[colIndex] = newCurrent;
+              colWidths[colIndex + 1] = newNext;
+              applyColWidths(table);
+            }
+
+            function onUp() {
+              handle.classList.remove('dragging');
+              document.removeEventListener('mousemove', onMove);
+              document.removeEventListener('mouseup', onUp);
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+          };
+        }
+
         // ── Init ───────────────────────────────────────────────────────────────
 
         (function init() {
@@ -658,7 +827,7 @@ enum HTMLTemplate {
             const rootIcon = rootEl.querySelector('.tree-icon');
             if (rootChildren) {
               rootChildren.classList.remove('collapsed');
-              if (rootIcon) rootIcon.textContent = '📂';
+              if (rootIcon) rootIcon.innerHTML = SVG_ICONS.folder_open;
             }
             if (rootRow) {
               rootRow.classList.add('selected');
@@ -670,21 +839,24 @@ enum HTMLTemplate {
             }
           }
 
-          // Search input
+          // Search button and Enter key
           const searchInput = document.getElementById('search-input');
-          let searchTimer;
-          searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-              const q = searchInput.value.trim();
-              if (q) {
-                doSearch(q);
-              } else {
-                searchMode = false;
-                searchResults = [];
-                renderFileTable(currentFiles, selectedNodePath);
-              }
-            }, 300);
+          const searchBtn = document.getElementById('search-btn');
+
+          function runSearch() {
+            const q = searchInput.value.trim();
+            if (q) {
+              doSearch(q);
+            } else {
+              searchMode = false;
+              searchResults = [];
+              renderFileTable(currentFiles, selectedNodePath);
+            }
+          }
+
+          searchBtn.addEventListener('click', runSearch);
+          searchInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') runSearch();
           });
 
           // Hide loading overlay, show app

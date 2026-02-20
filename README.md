@@ -54,6 +54,19 @@ See LICENSE.txt.
 
 ## Changelog
 
+### v1.3
+
+**File type icons**
+- The file listing now shows a small icon next to each entry based on its type — folders, images, video, audio, code, archives, and more. Unrecognised extensions fall back to a generic file icon.
+
+**Resizable columns**
+- Columns in the file listing can now be resized by dragging the divider between them.
+
+**Manual search**
+- Search no longer runs automatically as you type. Instead, click the Search button or press Enter to run a search. This prevents slowdowns when working with large snapshots.
+
+
+
 ### v1.2.1
 
  - Ventura saving fix
