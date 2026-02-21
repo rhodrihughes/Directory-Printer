@@ -54,7 +54,12 @@ See LICENSE.txt.
 
 ## Changelog
 
-<h2> v1.4 </h2>
+<h3> v1.4.1 </h3>
+
+**Build fix**
+- Fixed an issue where the app appeared as "damaged" when downloaded from GitHub Releases. 
+
+<h3> v1.4 </h3>
 
 **Image & video thumbnails**
 - New "Generate image thumbnails" option in the scan settings
@@ -72,7 +77,7 @@ See LICENSE.txt.
 - Date Modified column header and values are now left-aligned, consistent with the other columns
 - Resizing a column no longer accidentally triggers a sort.
 
-<h2> v1.3 </h2>
+<h3> v1.3 </h3>
 
 **File type icons**
 - The file listing now shows a small icon next to each entry based on its type — folders, images, video, audio, code, archives, and more. Unrecognised extensions fall back to a generic file icon.
@@ -85,11 +90,11 @@ See LICENSE.txt.
 
 
 
-<h2> v1.2.1 </h2>
+<h3> v1.2.1 </h3>
 
  - Ventura saving fix
 
-<h2> v1.2 </h2>
+<h3> v1.2 </h3>
 
 **Faster scanning**
 - Scanning is much faster, especially on network drives

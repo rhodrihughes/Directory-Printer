@@ -23,14 +23,14 @@ jobs:
             -scheme "Directory Printer" \
             -configuration Release \
             -derivedDataPath build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES
 
       - name: Package
         run: |
           cd build/Build/Products/Release
-          zip -r "Directory-Printer-${{ github.ref_name }}.zip" "Directory Printer.app"
+          ditto -c -k --keepParent "Directory Printer.app" "Directory-Printer-${{ github.ref_name }}.zip"
 
       - name: Extract release notes
         id: release_notes
@@ -49,7 +49,12 @@ jobs:
             ${{ steps.release_notes.outputs.notes }}
 
             ---
-            > **Note:** This app is unsigned. On first launch, right-click the app and choose **Open** to bypass Gatekeeper.
+            > **Note:** This app is unsigned. macOS may show a "damaged" error when opening it.
+            > To fix this, run the following command in Terminal after unzipping:
+            > ```
+            > xattr -cr /path/to/Directory\ Printer.app
+            > ```
+            > Then double-click the app to open it normally.
           files: build/Build/Products/Release/Directory-Printer-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
