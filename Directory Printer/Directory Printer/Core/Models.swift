@@ -11,6 +11,7 @@ struct FileNode: Codable, Equatable {
     let dateModified: Date
     let isSymlink: Bool
     var children: [FileNode] // empty for files
+    var thumbFile: String?   // thumbnail filename relative to thumbnails folder, nil if none
 }
 
 // MARK: - ScanOptions
@@ -20,13 +21,14 @@ struct ScanOptions {
     let rootPath: URL
     let includeHidden: Bool
     let linkToFiles: Bool
+    let generateThumbnails: Bool
 }
 
 // MARK: - ScanResult
 
 /// Output of a completed scan.
 struct ScanResult: Codable {
-    let root: FileNode
+    var root: FileNode
     let totalFiles: Int
     let totalFolders: Int
     let scanDate: Date

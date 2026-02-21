@@ -55,7 +55,8 @@ struct CLIRunner {
         let options = ScanOptions(
             rootPath: rootURL,
             includeHidden: parsed.includeHidden,
-            linkToFiles: parsed.linkFiles
+            linkToFiles: parsed.linkFiles,
+            generateThumbnails: false
         )
 
         // Run scan synchronously — scanner.scan() is a blocking call.

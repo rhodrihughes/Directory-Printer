@@ -193,6 +193,12 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("Include hidden files", isOn: $viewModel.includeHidden)
                     Toggle("Link to files", isOn: $viewModel.linkToFiles)
+                    Toggle("Generate image thumbnails", isOn: $viewModel.generateThumbnails)
+                    if viewModel.generateThumbnails {
+                        Text("Note: generating thumbnails of large directories will increase generation times.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.vertical, 4)
             }

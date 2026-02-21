@@ -8,6 +8,18 @@ struct PreferencesView: View {
 
     var body: some View {
         Form {
+            Section(header: Text("Thumbnails").font(.headline)) {
+                Toggle(isOn: $prefs.retinaThumnails) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Retina thumbnails (2×)")
+                        Text("Generates 128×128 px thumbnails instead of 64×64.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             Section(header: Text("Branding").font(.headline)) {
                 HStack(spacing: 16) {
                     // Preview
@@ -35,7 +47,7 @@ struct PreferencesView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Logo image (max 32px height)")
                             .font(.subheadline)
-                        Text("Embedded as base64 in the HTML snapshot header.")
+                        Text("Appears in the header of the document.")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
@@ -51,7 +63,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 180)
+        .frame(width: 420, height: 280)
         .padding()
     }
 }

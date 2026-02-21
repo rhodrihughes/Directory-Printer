@@ -31,14 +31,22 @@ struct HTMLGenerator {
     /// - Returns: A complete HTML string ready to be written to disk.
     /// - Throws: `HTMLGeneratorError.placeholderNotFound` if a required template
     ///           placeholder is missing, or a JSON encoding error if serialization fails.
-    static func generate(from result: ScanResult, options: ScanOptions, logoBase64: String? = nil) throws -> String {
+    static func generate(
+        from result: ScanResult,
+        options: ScanOptions,
+        logoBase64: String? = nil,
+        thumbnailsFolder: String? = nil
+    ) throws -> String {
         var html = HTMLTemplate.template
 
         // 1. Encode ScanResult to JSON
         let jsonData = try DataEncoder.encodeToJSON(result)
 
         // 2. Build config JSON
-        let configDict: [String: Any] = ["linkToFiles": options.linkToFiles]
+        var configDict: [String: Any] = ["linkToFiles": options.linkToFiles]
+        if let folder = thumbnailsFolder {
+            configDict["thumbnailsFolder"] = folder
+        }
         guard let configData = try? JSONSerialization.data(withJSONObject: configDict),
               let configJSON = String(data: configData, encoding: .utf8) else {
             throw HTMLGeneratorError.placeholderNotFound("CONFIG serialization failed")

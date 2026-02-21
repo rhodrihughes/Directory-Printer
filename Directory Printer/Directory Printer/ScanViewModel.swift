@@ -12,11 +12,18 @@ class ScanViewModel: ObservableObject {
     // MARK: - Published state
 
     @Published var rootFolder: URL? {
-        didSet { outputPath = rootFolder.map { suggestedOutputURL(for: $0) } }
+        didSet {
+            outputPath = rootFolder.map { suggestedOutputURL(for: $0) }
+            outputPathConfirmed = false
+        }
     }
     @Published var outputPath: URL?
+    /// True only when the user explicitly confirmed a path via NSSavePanel.
+    private var outputPathConfirmed = false
+
     @Published var includeHidden: Bool = false
     @Published var linkToFiles: Bool = false
+    @Published var generateThumbnails: Bool = false
     @Published var isScanning: Bool = false
     @Published var progress: ScanProgress?
     @Published var scanPhase: String = ""
@@ -93,6 +100,7 @@ class ScanViewModel: ObservableObject {
         panel.canCreateDirectories = true
         if panel.runModal() == .OK {
             outputPath = panel.url
+            outputPathConfirmed = true
         }
     }
 
@@ -103,6 +111,15 @@ class ScanViewModel: ObservableObject {
             errorMessage = "Please select a root folder before scanning."
             return
         }
+
+        // If the output path was never explicitly confirmed via NSSavePanel, show it
+        // now so the sandbox grants write permission before we attempt anything.
+        if !outputPathConfirmed {
+            selectOutputPath()
+            // User cancelled the panel — abort.
+            guard outputPathConfirmed else { return }
+        }
+
         guard let output = outputPath else {
             errorMessage = "Please choose an output file path before scanning."
             return
@@ -119,12 +136,14 @@ class ScanViewModel: ObservableObject {
         let options = ScanOptions(
             rootPath: root,
             includeHidden: includeHidden,
-            linkToFiles: linkToFiles
+            linkToFiles: linkToFiles,
+            generateThumbnails: generateThumbnails
         )
 
         // Capture scanner reference before dispatching to avoid @MainActor access from GCD.
         let scanner = self.scanner
         let logoB64 = PreferencesManager.shared.logoBase64
+        let thumbPixelSize: CGFloat = PreferencesManager.shared.retinaThumnails ? 128 : 64
 
         // Use GCD to guarantee a real background thread — no actor inference,
         // no cooperative thread pool ambiguity. The main thread stays completely free.
@@ -137,23 +156,62 @@ class ScanViewModel: ObservableObject {
                     }
                 }
 
+                // 2. Optionally generate thumbnails
+                var thumbnailsFolderName: String? = nil
+                var resultWithThumbs = result
+                // Resolve final output paths — when thumbnails are on we create a
+                // containing folder next to the chosen output location.
+                let htmlOutput: URL
+                if options.generateThumbnails {
+                    // e.g. "myproject-directoryprintout-2026-02-20-1430"
+                    let stem = output.deletingPathExtension().lastPathComponent
+                    let containingFolder = output.deletingLastPathComponent()
+                        .appendingPathComponent(stem)
+                    do {
+                        try FileManager.default.createDirectory(
+                            at: containingFolder, withIntermediateDirectories: true)
+                    } catch {
+                        DispatchQueue.main.async { [weak self] in
+                            self?.isScanning = false
+                            self?.errorMessage = "Could not create output folder: \(error.localizedDescription)"
+                        }
+                        return
+                    }
+                    htmlOutput = containingFolder.appendingPathComponent(output.lastPathComponent)
+
+                    DispatchQueue.main.async { [weak self] in
+                        self?.scanPhase = "Generating thumbnails…"
+                    }
+                    let thumbFolder = containingFolder.appendingPathComponent("thumbnails")
+                    let thumbMap = ThumbnailGenerator.generate(from: result.root, outputFolder: thumbFolder, pixelSize: thumbPixelSize) { done, total in
+                        DispatchQueue.main.async { [weak self] in
+                            self?.scanPhase = "Thumbnails: \(done)/\(total)…"
+                        }
+                    }
+                    ThumbnailGenerator.applyThumbnailMap(thumbMap, to: &resultWithThumbs.root)
+                    thumbnailsFolderName = "thumbnails"
+                } else {
+                    htmlOutput = output
+                }
+
                 DispatchQueue.main.async { [weak self] in
                     self?.scanPhase = "Generating HTML…"
                 }
 
-                // 2. Generate HTML
+                // 3. Generate HTML
                 let html = try HTMLGenerator.generate(
-                    from: result, options: options, logoBase64: logoB64
+                    from: resultWithThumbs, options: options, logoBase64: logoB64,
+                    thumbnailsFolder: thumbnailsFolderName
                 )
 
                 DispatchQueue.main.async { [weak self] in
                     self?.scanPhase = "Writing file…"
                 }
 
-                // 3. Write to disk — if this fails due to sandbox permissions,
+                // 4. Write to disk — if this fails due to sandbox permissions,
                 // surface a clear error so the user can pick a different location.
                 do {
-                    try html.write(to: output, atomically: true, encoding: .utf8)
+                    try html.write(to: htmlOutput, atomically: true, encoding: .utf8)
                 } catch {
                     DispatchQueue.main.async { [weak self] in
                         self?.isScanning = false
@@ -162,10 +220,10 @@ class ScanViewModel: ObservableObject {
                     return
                 }
 
-                // 4. Done
+                // 5. Done
                 DispatchQueue.main.async { [weak self] in
                     self?.isScanning = false
-                    self?.lastOutputURL = output
+                    self?.lastOutputURL = htmlOutput
                     self?.showSuccessAlert = true
                 }
 

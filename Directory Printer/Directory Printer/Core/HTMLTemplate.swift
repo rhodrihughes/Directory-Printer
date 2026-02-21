@@ -210,7 +210,8 @@ enum HTMLTemplate {
         th { position: relative; }
         th:nth-child(1) { width: 45%; }
         th:nth-child(2) { width: 30%; }
-        th:nth-child(3) { width: 25%; text-align: right; }
+        th:nth-child(3) { width: 25%; }
+        th.col-size { text-align: right; }
         .col-resizer {
           position: absolute;
           right: 0;
@@ -242,11 +243,19 @@ enum HTMLTemplate {
           white-space: nowrap;
           font-size: 12px;
         }
-        td:nth-child(3) { text-align: right; color: #888; }
-        td:nth-child(2) { color: #888; }
+        td.col-size { text-align: right; color: #888; }
+        td.col-date { color: #888; }
         tr:hover td { background: #2a2d2e; }
         td a { color: #4ec9b0; text-decoration: none; }
         td a:hover { text-decoration: underline; }
+        .thumb-cell { width: 70px; padding: 2px 6px; vertical-align: middle; }
+        .thumb-cell img {
+          max-width: 64px; max-height: 64px;
+          width: auto; height: auto;
+          display: block;
+          margin: auto;
+          border-radius: 3px;
+        }
         #no-results {
           padding: 40px;
           text-align: center;
@@ -526,19 +535,27 @@ enum HTMLTemplate {
 
         function buildTable(files, showPath) {
           const table = document.createElement('table');
+          const hasThumbs = !!CONFIG.thumbnailsFolder;
 
           const thead = document.createElement('thead');
           const headerRow = document.createElement('tr');
 
+          if (hasThumbs) {
+            const thThumb = document.createElement('th');
+            thThumb.style.cssText = 'width:70px;padding:3px 6px;';
+            headerRow.appendChild(thThumb);
+          }
+
           const cols = [
-            { key: 'name', label: 'Name' },
-            { key: 'dateModified', label: 'Date Modified' },
-            { key: 'size', label: 'Size' }
+            { key: 'name', label: 'Name', cls: '' },
+            { key: 'dateModified', label: 'Date Modified', cls: 'col-date' },
+            { key: 'size', label: 'Size', cls: 'col-size' }
           ];
 
           cols.forEach(col => {
             const th = document.createElement('th');
             th.textContent = col.label;
+            if (col.cls) th.classList.add(col.cls);
             if (sortCol === col.key) {
               th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
             }
@@ -564,6 +581,27 @@ enum HTMLTemplate {
           const tbody = document.createElement('tbody');
           files.forEach(f => {
             const tr = document.createElement('tr');
+
+            // Thumbnail cell (images only)
+            if (hasThumbs) {
+              const tdThumb = document.createElement('td');
+              tdThumb.className = 'thumb-cell';
+              const ext = (f.name.split('.').pop() || '').toLowerCase();
+              const isImg = ['png','jpg','jpeg','gif','webp','bmp','tiff','tif','heic','heif',
+                             'mp4','mov','m4v','avi','mkv','wmv','flv','webm',
+                             'pdf','docx','xlsx','pptx','doc','xls','ppt',
+                             'pages','numbers','keynote',
+                             'usdz','obj','scn','abc','ply','stl'].includes(ext);
+              if (!f.isDirectory && isImg && f.thumbFile) {
+                const img = document.createElement('img');
+                img.src = CONFIG.thumbnailsFolder + '/' + f.thumbFile;
+                img.alt = '';
+                img.loading = 'lazy';
+                img.style.cssText = 'max-width:64px;max-height:64px;width:auto;height:auto;display:block;margin:auto;border-radius:3px;';
+                tdThumb.appendChild(img);
+              }
+              tr.appendChild(tdThumb);
+            }
 
             // Name cell
             const tdName = document.createElement('td');
@@ -610,11 +648,13 @@ enum HTMLTemplate {
 
             // Date cell
             const tdDate = document.createElement('td');
+            tdDate.className = 'col-date';
             tdDate.textContent = formatDate(f.dateModified);
             tr.appendChild(tdDate);
 
             // Size cell
             const tdSize = document.createElement('td');
+            tdSize.className = 'col-size';
             tdSize.textContent = formatSize(f.size || 0);
             tr.appendChild(tdSize);
 
@@ -752,20 +792,25 @@ enum HTMLTemplate {
         let colWidths = [45, 30, 25];
 
         function applyColWidths(table) {
+          const hasThumbs = !!CONFIG.thumbnailsFolder;
           const ths = table.querySelectorAll('thead th');
-          ths.forEach((th, i) => {
-            th.style.width = colWidths[i] + '%';
+          // If thumbnails are present, th[0] is the fixed thumb column — skip it
+          const offset = hasThumbs ? 1 : 0;
+          colWidths.forEach((w, i) => {
+            if (ths[i + offset]) ths[i + offset].style.width = w + '%';
           });
         }
 
         function addColResizers(table) {
           applyColWidths(table);
+          const hasThumbs = !!CONFIG.thumbnailsFolder;
+          const offset = hasThumbs ? 1 : 0;
           const ths = table.querySelectorAll('thead th');
-          // Only add resizers to first two columns (last column fills remaining space)
-          for (let i = 0; i < ths.length - 1; i++) {
+          // Only add resizers to first two data columns (last fills remaining space)
+          for (let i = offset; i < ths.length - 1; i++) {
             const handle = document.createElement('div');
             handle.className = 'col-resizer';
-            handle.addEventListener('mousedown', makeColResizeHandler(table, i));
+            handle.addEventListener('mousedown', makeColResizeHandler(table, i - offset));
             ths[i].appendChild(handle);
           }
         }
@@ -780,8 +825,10 @@ enum HTMLTemplate {
             const tableWidth = tableRect.width;
             const startX = e.clientX;
             const startWidths = [...colWidths];
+            let didDrag = false;
 
             function onMove(ev) {
+              didDrag = true;
               const delta = ev.clientX - startX;
               const deltaPct = (delta / tableWidth) * 100;
               let newCurrent = startWidths[colIndex] + deltaPct;
@@ -798,6 +845,11 @@ enum HTMLTemplate {
               handle.classList.remove('dragging');
               document.removeEventListener('mousemove', onMove);
               document.removeEventListener('mouseup', onUp);
+              // Suppress the click event on the th if the user actually dragged
+              if (didDrag) {
+                const suppress = (ev) => { ev.stopPropagation(); };
+                handle.closest('th').addEventListener('click', suppress, { capture: true, once: true });
+              }
             }
 
             document.addEventListener('mousemove', onMove);

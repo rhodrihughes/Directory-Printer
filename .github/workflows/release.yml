@@ -32,13 +32,23 @@ jobs:
           cd build/Build/Products/Release
           zip -r "Directory-Printer-${{ github.ref_name }}.zip" "Directory Printer.app"
 
+      - name: Extract release notes
+        id: release_notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          NOTES=$(awk "/^### ${VERSION}$/{found=1; next} found && /^### /{exit} found{print}" README.md)
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: Directory Printer ${{ github.ref_name }}
           body: |
-            ## Directory Printer ${{ github.ref_name }}
+            ${{ steps.release_notes.outputs.notes }}
 
+            ---
             > **Note:** This app is unsigned. On first launch, right-click the app and choose **Open** to bypass Gatekeeper.
           files: build/Build/Products/Release/Directory-Printer-${{ github.ref_name }}.zip
         env:

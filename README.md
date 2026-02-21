@@ -54,7 +54,25 @@ See LICENSE.txt.
 
 ## Changelog
 
-### v1.3
+<h2> v1.4 </h2>
+
+**Image & video thumbnails**
+- New "Generate image thumbnails" option in the scan settings
+- When enabled, 64×64 thumbnails are generated for images, video, PDFs documents, and 3D files
+- "Retina thumbnails (2×)" option in Preferences generates 128×128 thumbnails instead of 64×64 for sharper display on high-resolution screens
+- Thumbnails are saved alongside the HTML file in a `thumbnails/` folder inside a named output directory
+- The file listing shows thumbnails in a dedicated column when available
+
+*Generating thumbnails of large directories will increase generation times*
+
+**Sandbox fix**
+- If the output path was not explicitly chosen before clicking Scan, the save panel now opens automatically, ensuring the app always has the necessary write permissions before generating
+
+**UI fixes**
+- Date Modified column header and values are now left-aligned, consistent with the other columns
+- Resizing a column no longer accidentally triggers a sort.
+
+<h2> v1.3 </h2>
 
 **File type icons**
 - The file listing now shows a small icon next to each entry based on its type — folders, images, video, audio, code, archives, and more. Unrecognised extensions fall back to a generic file icon.
@@ -67,11 +85,11 @@ See LICENSE.txt.
 
 
 
-### v1.2.1
+<h2> v1.2.1 </h2>
 
  - Ventura saving fix
 
-### v1.2
+<h2> v1.2 </h2>
 
 **Faster scanning**
 - Scanning is much faster, especially on network drives

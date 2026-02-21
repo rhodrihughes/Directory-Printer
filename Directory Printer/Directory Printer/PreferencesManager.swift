@@ -14,6 +14,7 @@ class PreferencesManager: ObservableObject {
     static let shared = PreferencesManager()
 
     private let logoKey = "logoBase64"
+    private let retinaThumbsKey = "retinaThumnails"
     private let maxHeight: CGFloat = 32
 
     /// Base64-encoded PNG of the (possibly resized) logo, or nil if none set.
@@ -21,8 +22,14 @@ class PreferencesManager: ObservableObject {
         didSet { UserDefaults.standard.set(logoBase64, forKey: logoKey) }
     }
 
+    /// When true, thumbnails are generated at 128×128 (2× retina) instead of 64×64.
+    @Published var retinaThumnails: Bool {
+        didSet { UserDefaults.standard.set(retinaThumnails, forKey: retinaThumbsKey) }
+    }
+
     private init() {
         logoBase64 = UserDefaults.standard.string(forKey: logoKey)
+        retinaThumnails = UserDefaults.standard.bool(forKey: retinaThumbsKey)
     }
 
     // MARK: - Image selection
