@@ -49,12 +49,26 @@ jobs:
             ${{ steps.release_notes.outputs.notes }}
 
             ---
-            > **Note:** This app is unsigned. macOS may show a "damaged" error when opening it.
-            > To fix this, run the following command in Terminal after unzipping:
-            > ```
-            > xattr -cr /path/to/Directory\ Printer.app
-            > ```
-            > Then double-click the app to open it normally.
+
+            ## Installation
+
+            The app isn't notarized by Apple so Gatekeeper will block it on first launch. To open it:
+
+            **Option 1: System Settings (recommended)**
+            1. Try to open the app — macOS will show a warning
+            2. Open **System Settings → Privacy & Security**
+            3. Scroll down to the **Security** section
+            4. Click **"Open Anyway"** next to the Directory Printer warning
+            5. Confirm by clicking **"Open"** in the dialog
+
+            **Option 2: Terminal**
+            ```bash
+            xattr -cr /Applications/Directory\ Printer.app
+            ```
+
+            You only need to do this once. After that, the app will open normally.
+
+            Each release is built from the source code shown on GitHub, feel free to look through the code for safety before installation.
           files: build/Build/Products/Release/Directory-Printer-${{ github.ref_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

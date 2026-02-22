@@ -105,7 +105,8 @@ struct ContentView: View {
             "Snapshot Created",
             isPresented: $viewModel.showSuccessAlert
         ) {
-            Button("Open in Browser") { viewModel.openInBrowser() }
+            let isZip = viewModel.lastOutputURL?.pathExtension.lowercased() == "zip"
+            Button(isZip ? "Show in Finder" : "Open in Browser") { viewModel.openInBrowser() }
             Button("OK", role: .cancel) {}
         } message: {
             if let url = viewModel.lastOutputURL {
@@ -178,9 +179,14 @@ struct ContentView: View {
             // Output file picker
             GroupBox(label: Text("Output").font(.headline)) {
                 HStack {
-                    Button("Choose Output File…") { viewModel.selectOutputPath() }
-                    Text(viewModel.outputPath?.path ?? "No output file selected")
-                        .foregroundColor(viewModel.outputPath == nil ? .secondary : .primary)
+                    Button(viewModel.generateThumbnails ? "Choose Output Folder…" : "Choose Output File…") {
+                        viewModel.selectOutputPath()
+                    }
+                    let displayPath = viewModel.generateThumbnails
+                        ? viewModel.outputFolderURL?.path
+                        : viewModel.outputPath?.path
+                    Text(displayPath ?? "No output location selected")
+                        .foregroundColor(displayPath == nil ? .secondary : .primary)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -194,6 +200,14 @@ struct ContentView: View {
                     Toggle("Include hidden files", isOn: $viewModel.includeHidden)
                     Toggle("Link to files", isOn: $viewModel.linkToFiles)
                     Toggle("Generate image thumbnails", isOn: $viewModel.generateThumbnails)
+                    if viewModel.generateThumbnails {
+                        HStack {
+                            Spacer().frame(width: 20)
+                            Toggle("Save as .zip", isOn: $viewModel.zipThumbnailOutput)
+                                .font(.callout)
+                        }
+                    }
+                    Toggle("Compress snapshot data", isOn: $viewModel.compressData)
                     if viewModel.generateThumbnails {
                         Text("Note: generating thumbnails of large directories will increase generation times.")
                             .font(.caption)

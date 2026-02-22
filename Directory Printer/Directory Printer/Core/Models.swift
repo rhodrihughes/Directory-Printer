@@ -22,6 +22,7 @@ struct ScanOptions {
     let includeHidden: Bool
     let linkToFiles: Bool
     let generateThumbnails: Bool
+    let compressData: Bool
 }
 
 // MARK: - ScanResult

@@ -31,6 +31,29 @@ Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.<
 - Optional file:// links for direct file access from the snapshot
 - Custom logo support via Preferences
 
+## Installation
+
+Download the latest release from the [Releases page](https://github.com/rhodrihughes/Directory-Printer/releases/latest).
+
+The app isn't notarized by Apple so Gatekeeper will block it on first launch. To open it:
+
+**Option 1: System Settings (recommended)**
+1. Try to open the app — macOS will show a warning
+2. Open System Settings → Privacy & Security
+3. Scroll down to the Security section
+4. Click "Open Anyway" next to the Directory Printer warning
+5. Confirm by clicking "Open" in the dialog
+
+**Option 2: Terminal**
+```bash
+xattr -cr /Applications/Directory\ Printer.app
+```
+
+You only need to do this once. After that, the app will open normally.
+
+Each release is built from the source code shown on GitHub, feel free to look through the code for safety before installation.
+
+
 ## Usage
 
 Open the app, select a folder, choose an output path, and click Scan. Once complete, the snapshot can be opened in any web browser.
@@ -54,10 +77,22 @@ See LICENSE.txt.
 
 ## Changelog
 
+<h3> v1.5 </h3>
+
+**Gzip compression**
+- New "Compress snapshot data" option in the scan settings
+- When enabled, the embedded snapshot data is gzip-compressed and decompressed in the browser at load time
+- Significantly reduces file size for large directory scans (~13:1 compression ratio)
+
+**Thumbnail zip export**
+- When "Generate image thumbnails" is enabled, a new "Save as .zip" option packages the HTML file and thumbnails folder into a single zip archive ready to share
+
+
 <h3> v1.4.1 </h3>
 
 **Build fix**
 - Fixed an issue where the app appeared as "damaged" when downloaded from GitHub Releases. 
+
 
 <h3> v1.4 </h3>
 
@@ -77,6 +112,7 @@ See LICENSE.txt.
 - Date Modified column header and values are now left-aligned, consistent with the other columns
 - Resizing a column no longer accidentally triggers a sort.
 
+
 <h3> v1.3 </h3>
 
 **File type icons**
@@ -89,10 +125,10 @@ See LICENSE.txt.
 - Search no longer runs automatically as you type. Instead, click the Search button or press Enter to run a search. This prevents slowdowns when working with large snapshots.
 
 
-
 <h3> v1.2.1 </h3>
 
  - Ventura saving fix
+
 
 <h3> v1.2 </h3>
 

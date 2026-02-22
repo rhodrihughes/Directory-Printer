@@ -56,7 +56,8 @@ struct CLIRunner {
             rootPath: rootURL,
             includeHidden: parsed.includeHidden,
             linkToFiles: parsed.linkFiles,
-            generateThumbnails: false
+            generateThumbnails: false,
+            compressData: false
         )
 
         // Run scan synchronously — scanner.scan() is a blocking call.

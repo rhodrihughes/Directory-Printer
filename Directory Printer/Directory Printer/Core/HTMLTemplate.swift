@@ -327,8 +327,32 @@ enum HTMLTemplate {
       </div>
 
       <script>
-        const SNAPSHOT_DATA = /*SNAPSHOT_DATA*/;
+        const SNAPSHOT_DATA_RAW = /*SNAPSHOT_DATA*/;
         const CONFIG = /*SNAPSHOT_CONFIG*/;
+
+        // ── Decompression helper ───────────────────────────────────────────────
+
+        async function decompressData(b64String) {
+          const binary = atob(b64String);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const ds = new DecompressionStream('gzip');
+          const writer = ds.writable.getWriter();
+          writer.write(bytes);
+          writer.close();
+          const reader = ds.readable.getReader();
+          const chunks = [];
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+          }
+          const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+          const merged = new Uint8Array(totalLen);
+          let offset = 0;
+          for (const c of chunks) { merged.set(c, offset); offset += c.length; }
+          return JSON.parse(new TextDecoder().decode(merged));
+        }
 
         // ── Utilities ──────────────────────────────────────────────────────────
 
@@ -350,6 +374,8 @@ enum HTMLTemplate {
         }
 
         // ── File type icons ────────────────────────────────────────────────────
+
+        let _snapshotData = null; // resolved at init (may need async decompression)
 
         const SVG_ICONS = {
           folder: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.086a1.5 1.5 0 0 1 1.06.44L7.56 3.5H13.5A1.5 1.5 0 0 1 15 5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9Z" fill="#C8A84B" fill-opacity="0.85"/></svg>',
@@ -747,7 +773,7 @@ enum HTMLTemplate {
           searchMode = true;
           const lower = query.toLowerCase();
           const all = [];
-          collectAllFiles(SNAPSHOT_DATA.root, all);
+          collectAllFiles(_snapshotData.root, all);
           searchResults = all.filter(f => f.name.toLowerCase().includes(lower));
           renderSearchResults(searchResults);
         }
@@ -859,8 +885,12 @@ enum HTMLTemplate {
 
         // ── Init ───────────────────────────────────────────────────────────────
 
-        (function init() {
-          const data = SNAPSHOT_DATA;
+        (async function init() {
+          const data = CONFIG.compressed
+            ? await decompressData(SNAPSHOT_DATA_RAW)
+            : SNAPSHOT_DATA_RAW;
+
+          _snapshotData = data;
 
           // Header
           document.getElementById('header-path').textContent = data.rootPath || '';
