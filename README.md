@@ -77,6 +77,11 @@ See LICENSE.txt.
 
 ## Changelog
 
+<h3> v1.5.1 </h3>
+
+**Build fix**
+- Fixed an issue where the app failed to build a universal binary to run on Intel Macs.
+
 <h3> v1.5 </h3>
 
 **Gzip compression**
