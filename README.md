@@ -31,6 +31,13 @@ Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.<
 - Optional file:// links for direct file access from the Directory Report
 - Custom logo support via Preferences
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/dp-ss-1.png" alt="Directory Printer main interface" width="40%">
+  <img src="screenshots/dp-ss-2.png" alt="Directory Report example" width="58%">
+</p>
+
 ## Installation
 
 Download the latest release from the [Releases page](https://github.com/rhodrihughes/Directory-Printer/releases/latest).
@@ -52,7 +59,6 @@ xattr -cr /Applications/Directory\ Printer.app
 You only need to do this once. After that, the app will open normally.
 
 Each release is built from the source code shown on GitHub, feel free to look through the code for safety before installation.
-
 
 ## Usage
 
@@ -95,10 +101,12 @@ See LICENSE.txt.
 - Fixed initialization error when opening reports with thumbnails and compression enabled
 - Files in exported ZIP archives now have correct modification timestamps instead of defaulting to 1979
 
+
 <h3> v1.5.1 </h3>
 
 **Build fix**
 - Fixed an issue where the app failed to build a universal binary to run on Intel Macs.
+
 
 <h3> v1.5 </h3>
 
