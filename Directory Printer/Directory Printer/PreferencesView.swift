@@ -45,9 +45,9 @@ struct PreferencesView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Logo image (max 32px height)")
+                        Text("Logo image")
                             .font(.subheadline)
-                        Text("Appears in the header of the document.")
+                        Text("Appears in the top right of the header in the document. \nThe image will be optimised before embedding.")
                             .font(.caption)
                             .foregroundColor(.secondary)
 

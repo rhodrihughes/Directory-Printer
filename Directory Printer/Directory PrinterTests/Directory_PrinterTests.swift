@@ -160,7 +160,7 @@ final class Directory_PrinterTests: XCTestCase {
         try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
         try "nested".write(to: sub.appendingPathComponent("c.txt"), atomically: true, encoding: .utf8)
 
-        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         let result = try DirectoryScanner().scan(options: options, progress: { _ in })
 
         XCTAssertEqual(result.totalFiles, 3)
@@ -176,7 +176,7 @@ final class Directory_PrinterTests: XCTestCase {
         try "visible".write(to: tmp.appendingPathComponent("visible.txt"), atomically: true, encoding: .utf8)
         try "hidden".write(to: tmp.appendingPathComponent(".hidden"), atomically: true, encoding: .utf8)
 
-        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         let result = try DirectoryScanner().scan(options: options, progress: { _ in })
 
         XCTAssertEqual(result.totalFiles, 1)
@@ -191,7 +191,7 @@ final class Directory_PrinterTests: XCTestCase {
         try "visible".write(to: tmp.appendingPathComponent("visible.txt"), atomically: true, encoding: .utf8)
         try "hidden".write(to: tmp.appendingPathComponent(".hidden"), atomically: true, encoding: .utf8)
 
-        let options = ScanOptions(rootPath: tmp, includeHidden: true, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: tmp, includeHidden: true, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         let result = try DirectoryScanner().scan(options: options, progress: { _ in })
 
         XCTAssertEqual(result.totalFiles, 2)
@@ -199,7 +199,7 @@ final class Directory_PrinterTests: XCTestCase {
 
     func testDirectoryScanner_throwsForMissingRoot() {
         let missing = URL(fileURLWithPath: "/nonexistent/path/\(UUID().uuidString)")
-        let options = ScanOptions(rootPath: missing, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: missing, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         XCTAssertThrowsError(try DirectoryScanner().scan(options: options, progress: { _ in })) { error in
             XCTAssertTrue(error is ScanError)
         }
@@ -210,7 +210,7 @@ final class Directory_PrinterTests: XCTestCase {
         try "data".write(to: tmp, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         XCTAssertThrowsError(try DirectoryScanner().scan(options: options, progress: { _ in })) { error in
             XCTAssertTrue(error is ScanError)
         }
@@ -227,9 +227,229 @@ final class Directory_PrinterTests: XCTestCase {
         try data1.write(to: tmp.appendingPathComponent("a.bin"))
         try data2.write(to: tmp.appendingPathComponent("b.bin"))
 
-        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false)
+        let options = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
         let result = try DirectoryScanner().scan(options: options, progress: { _ in })
 
         XCTAssertEqual(result.root.size, 300)
+    }
+
+    // MARK: - HTMLGenerator compression
+
+    func testHTMLGenerator_compressedDataIsSmaller() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // Create a file with repetitive content (compresses well)
+        let repetitiveData = String(repeating: "A", count: 10000)
+        try repetitiveData.write(to: tmp.appendingPathComponent("large.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        // Generate uncompressed HTML
+        let uncompressedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let uncompressedHTML = try HTMLGenerator.generate(from: result, options: uncompressedOptions)
+
+        // Generate compressed HTML
+        let compressedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: true, encryptionPassword: nil)
+        let compressedHTML = try HTMLGenerator.generate(from: result, options: compressedOptions)
+
+        // Compressed should be smaller
+        XCTAssertLessThan(compressedHTML.count, uncompressedHTML.count)
+    }
+
+    func testHTMLGenerator_compressedConfigFlag() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let compressedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: true, encryptionPassword: nil)
+        let html = try HTMLGenerator.generate(from: result, options: compressedOptions)
+
+        // Check that CONFIG contains compressed:true
+        XCTAssertTrue(html.contains("\"compressed\":true"))
+    }
+
+    func testHTMLGenerator_uncompressedConfigFlag() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let uncompressedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let html = try HTMLGenerator.generate(from: result, options: uncompressedOptions)
+
+        // Check that CONFIG contains compressed:false
+        XCTAssertTrue(html.contains("\"compressed\":false"))
+    }
+
+    // MARK: - HTMLGenerator encryption
+
+    func testHTMLGenerator_encryptedConfigFlag() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let encryptedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: "testpass123")
+        let html = try HTMLGenerator.generate(from: result, options: encryptedOptions)
+
+        // Check that CONFIG contains encrypted:true
+        XCTAssertTrue(html.contains("\"encrypted\":true"))
+    }
+
+    func testHTMLGenerator_unencryptedConfigFlag() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let unencryptedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let html = try HTMLGenerator.generate(from: result, options: unencryptedOptions)
+
+        // Check that CONFIG contains encrypted:false
+        XCTAssertTrue(html.contains("\"encrypted\":false"))
+    }
+
+    func testHTMLGenerator_encryptedDataContainsSaltIvCt() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let encryptedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: "testpass123")
+        let html = try HTMLGenerator.generate(from: result, options: encryptedOptions)
+
+        // Check that encrypted payload contains required fields
+        XCTAssertTrue(html.contains("\"salt\":"))
+        XCTAssertTrue(html.contains("\"iv\":"))
+        XCTAssertTrue(html.contains("\"ct\":"))
+    }
+
+    func testHTMLGenerator_encryptedDataIsNotPlainJSON() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let encryptedOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: "testpass123")
+        let html = try HTMLGenerator.generate(from: result, options: encryptedOptions)
+
+        // The actual file data should NOT be visible in plain text
+        XCTAssertFalse(html.contains("\"name\":\"file.txt\""))
+    }
+
+    // MARK: - HTMLGenerator compression + encryption
+
+    func testHTMLGenerator_compressedAndEncrypted() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        try "test".write(to: tmp.appendingPathComponent("file.txt"), atomically: true, encoding: .utf8)
+
+        let scanOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: false, encryptionPassword: nil)
+        let result = try DirectoryScanner().scan(options: scanOptions, progress: { _ in })
+
+        let bothOptions = ScanOptions(rootPath: tmp, includeHidden: false, linkToFiles: false, generateThumbnails: false, compressData: true, encryptionPassword: "testpass123")
+        let html = try HTMLGenerator.generate(from: result, options: bothOptions)
+
+        // Check both flags are set
+        XCTAssertTrue(html.contains("\"compressed\":true"))
+        XCTAssertTrue(html.contains("\"encrypted\":true"))
+        
+        // Check encrypted payload structure
+        XCTAssertTrue(html.contains("\"salt\":"))
+        XCTAssertTrue(html.contains("\"iv\":"))
+        XCTAssertTrue(html.contains("\"ct\":"))
+    }
+
+    // MARK: - HTMLTemplate structure
+
+    func testHTMLTemplate_containsRequiredPlaceholders() {
+        let template = HTMLTemplate.template
+        
+        // Check for required placeholders
+        XCTAssertTrue(template.contains("/*SNAPSHOT_DATA*/"))
+        XCTAssertTrue(template.contains("/*SNAPSHOT_CONFIG*/"))
+        XCTAssertTrue(template.contains("/*SNAPSHOT_LOGO*/"))
+    }
+
+    func testHTMLTemplate_containsDecryptionFunction() {
+        let template = HTMLTemplate.template
+        
+        // Check for decryption function
+        XCTAssertTrue(template.contains("async function decryptData(payload, password)"))
+        XCTAssertTrue(template.contains("PBKDF2"))
+        XCTAssertTrue(template.contains("AES-GCM"))
+    }
+
+    func testHTMLTemplate_containsDecompressionFunctions() {
+        let template = HTMLTemplate.template
+        
+        // Check for decompression functions
+        XCTAssertTrue(template.contains("async function decompressData(b64String)"))
+        XCTAssertTrue(template.contains("async function decompressBytes(bytes)"))
+        XCTAssertTrue(template.contains("DecompressionStream('gzip')"))
+    }
+
+    func testHTMLTemplate_containsPasswordUI() {
+        let template = HTMLTemplate.template
+        
+        // Check for password form elements
+        XCTAssertTrue(template.contains("This Directory Report is encrypted"))
+        XCTAssertTrue(template.contains("id=\"pw-input\""))
+        XCTAssertTrue(template.contains("id=\"pw-form\""))
+        XCTAssertTrue(template.contains("Incorrect password"))
+    }
+
+    func testHTMLTemplate_containsVersionBox() {
+        let template = HTMLTemplate.template
+        
+        // Check for version box structure
+        XCTAssertTrue(template.contains("id=\"version-box\""))
+        XCTAssertTrue(template.contains("id=\"version-link\""))
+        XCTAssertTrue(template.contains("Made with Directory Printer"))
+    }
+
+    func testHTMLTemplate_containsTreeContainer() {
+        let template = HTMLTemplate.template
+        
+        // Check for tree container structure
+        XCTAssertTrue(template.contains("id=\"tree-container\""))
+    }
+
+    func testHTMLTemplate_titleIsDirectoryReport() {
+        let template = HTMLTemplate.template
+        
+        // Check title
+        XCTAssertTrue(template.contains("<title id=\"page-title\">Directory Report</title>"))
+        XCTAssertTrue(template.contains("Directory Report of:"))
     }
 }

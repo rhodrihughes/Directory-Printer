@@ -39,6 +39,10 @@ class ScanViewModel: ObservableObject {
     /// unzipped folder is deleted, leaving a single .zip ready to share.
     @Published var zipThumbnailOutput: Bool = false
     @Published var compressData: Bool = false
+    /// Password for AES-256-GCM encryption. Empty string means no encryption.
+    /// Encryption is only available when thumbnails are disabled.
+    @Published var encryptionEnabled: Bool = false
+    @Published var encryptionPassword: String = ""
     @Published var isScanning: Bool = false
     @Published var progress: ScanProgress?
     @Published var scanPhase: String = ""
@@ -124,7 +128,7 @@ class ScanViewModel: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmm"
         let timestamp = formatter.string(from: Date())
-        let filename = "\(folderName)-directoryprintout-\(timestamp).html"
+        let filename = "\(folderName)-directoryreport-\(timestamp).html"
         return folder.deletingLastPathComponent().appendingPathComponent(filename)
     }
 
@@ -133,7 +137,7 @@ class ScanViewModel: ObservableObject {
             // Thumbnail mode: pick a folder — we'll create a named subfolder inside it.
             let panel = NSOpenPanel()
             panel.title = "Choose Output Folder"
-            panel.message = "Select a folder to save the snapshot and thumbnails into."
+            panel.message = "Select a folder to save the Directory Report and thumbnails into."
             panel.canChooseFiles = false
             panel.canChooseDirectories = true
             panel.allowsMultipleSelection = false
@@ -146,10 +150,10 @@ class ScanViewModel: ObservableObject {
         } else {
             // Normal mode: pick a file via save panel.
             let panel = NSSavePanel()
-            panel.title = "Save Snapshot As"
+            panel.title = "Save Directory Report As"
             panel.nameFieldStringValue = outputPath?.lastPathComponent
                 ?? rootFolder.map { suggestedOutputURL(for: $0).lastPathComponent }
-                ?? "snapshot.html"
+                ?? "directory-report.html"
             panel.allowedContentTypes = [.html]
             panel.canCreateDirectories = true
             if panel.runModal() == .OK {
@@ -167,7 +171,7 @@ class ScanViewModel: ObservableObject {
     private func selectOutputFolder() -> URL? {
         let panel = NSOpenPanel()
         panel.title = "Choose Output Folder"
-        panel.message = "Select a folder to save the snapshot and thumbnails into."
+        panel.message = "Select a folder to save the Directory Report and thumbnails into."
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -225,7 +229,8 @@ class ScanViewModel: ObservableObject {
             includeHidden: includeHidden,
             linkToFiles: linkToFiles,
             generateThumbnails: generateThumbnails,
-            compressData: compressData
+            compressData: compressData,
+            encryptionPassword: (!generateThumbnails && encryptionEnabled && !encryptionPassword.isEmpty) ? encryptionPassword : nil
         )
 
         // Capture scanner reference before dispatching to avoid @MainActor access from GCD.

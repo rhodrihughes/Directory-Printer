@@ -115,6 +115,9 @@ struct ZipWriter {
         }
 
         let compressedSize = UInt32(compressedData.count)
+        
+        // Get current date/time in DOS format
+        let (dosTime, dosDate) = currentDOSDateTime()
 
         // Local file header
         var localHeader = Data()
@@ -122,8 +125,8 @@ struct ZipWriter {
         localHeader.append(littleEndian16: 20)
         localHeader.append(littleEndian16: 0)
         localHeader.append(littleEndian16: compressionMethod)
-        localHeader.append(littleEndian16: 0)  // mod time
-        localHeader.append(littleEndian16: 0)  // mod date
+        localHeader.append(littleEndian16: dosTime)
+        localHeader.append(littleEndian16: dosDate)
         localHeader.append(littleEndian32: crc)
         localHeader.append(littleEndian32: compressedSize)
         localHeader.append(littleEndian32: uncompressedSize)
@@ -141,8 +144,8 @@ struct ZipWriter {
         cdRecord.append(littleEndian16: 20)  // version needed
         cdRecord.append(littleEndian16: 0)
         cdRecord.append(littleEndian16: compressionMethod)
-        cdRecord.append(littleEndian16: 0)  // mod time
-        cdRecord.append(littleEndian16: 0)  // mod date
+        cdRecord.append(littleEndian16: dosTime)
+        cdRecord.append(littleEndian16: dosDate)
         cdRecord.append(littleEndian32: crc)
         cdRecord.append(littleEndian32: compressedSize)
         cdRecord.append(littleEndian32: uncompressedSize)
@@ -205,6 +208,26 @@ struct ZipWriter {
         data.append(littleEndian32: centralDirOffset)
         data.append(littleEndian16: 0)
         return data
+    }
+
+    // MARK: - DOS date/time conversion
+
+    private static func currentDOSDateTime() -> (time: UInt16, date: UInt16) {
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: now)
+        
+        let year = UInt16(components.year ?? 2024) - 1980
+        let month = UInt16(components.month ?? 1)
+        let day = UInt16(components.day ?? 1)
+        let hour = UInt16(components.hour ?? 0)
+        let minute = UInt16(components.minute ?? 0)
+        let second = UInt16((components.second ?? 0) / 2)  // DOS time uses 2-second intervals
+        
+        let dosTime = (hour << 11) | (minute << 5) | second
+        let dosDate = (year << 9) | (month << 5) | day
+        
+        return (dosTime, dosDate)
     }
 
     // MARK: - CRC-32

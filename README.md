@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/License-GPLv3-green?style=flat-square" alt="GPLv3 License">
 </p>
 
-<p align="center">A macOS app that scans a folder and generates a self-contained HTML snapshot of its contents.
+<p align="center">A macOS app that scans a folder and generates a self-contained HTML Directory Report of its contents.
 The output is a single HTML file with an interactive file browser — a collapsible directory tree on the left and a sortable file listing on the right.
 Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.</p>
 
@@ -26,9 +26,9 @@ Basically <a href="https://github.com/rlv-dan/Snap2HTML">Snap2HTML</a> for Mac.<
 - Generates a single, portable HTML file with no external dependencies
 - Interactive tree navigation with folder expand/collapse
 - Sortable file listing by name, date modified, or size
-- Full-text search across all files in the snapshot
+- Full-text search across all files in the Directory Report
 - Optional inclusion of hidden files
-- Optional file:// links for direct file access from the snapshot
+- Optional file:// links for direct file access from the Directory Report
 - Custom logo support via Preferences
 
 ## Installation
@@ -56,7 +56,7 @@ Each release is built from the source code shown on GitHub, feel free to look th
 
 ## Usage
 
-Open the app, select a folder, choose an output path, and click Scan. Once complete, the snapshot can be opened in any web browser.
+Open the app, select a folder, choose an output path, and click Scan. Once complete, the Directory Report can be opened in any web browser.
 
 ## CLI
 
@@ -77,6 +77,24 @@ See LICENSE.txt.
 
 ## Changelog
 
+<h3> v1.6 </h3>
+
+**Directory Report encryption**
+- New "Encrypt Directory Report" option in the scan settings
+- When enabled, the generated HTML file is password-protected with AES-256-GCM encryption
+- The Directory Report data is encrypted before embedding in the HTML, and decrypted in the browser when the user enters the correct password
+- Provides secure sharing of sensitive directory structures without exposing file paths and metadata
+- Encryption is performed locally on your machine — passwords are never sent anywhere
+- Encrypted Directory Reports are the same self-contained HTML files as the unencrypted versions
+
+>_Thumbnail generation is not available for encrypted Directory Reports._  
+>_If you really need to password protected Directory Reports containing thumbnails, zip and encrypt the output folder with an app like <a href="https://www.keka.io">Keka</a>._
+
+**Fixes**
+- Page title now includes the scanned folder name and report generation date
+- Fixed initialization error when opening reports with thumbnails and compression enabled
+- Files in exported ZIP archives now have correct modification timestamps instead of defaulting to 1979
+
 <h3> v1.5.1 </h3>
 
 **Build fix**
@@ -85,8 +103,8 @@ See LICENSE.txt.
 <h3> v1.5 </h3>
 
 **Gzip compression**
-- New "Compress snapshot data" option in the scan settings
-- When enabled, the embedded snapshot data is gzip-compressed and decompressed in the browser at load time
+- New "Compress Directory Report data" option in the scan settings
+- When enabled, the embedded Directory Report data is gzip-compressed and decompressed in the browser at load time
 - Significantly reduces file size for large directory scans (~13:1 compression ratio)
 
 **Thumbnail zip export**
@@ -127,7 +145,7 @@ See LICENSE.txt.
 - Columns in the file listing can now be resized by dragging the divider between them.
 
 **Manual search**
-- Search no longer runs automatically as you type. Instead, click the Search button or press Enter to run a search. This prevents slowdowns when working with large snapshots.
+- Search no longer runs automatically as you type. Instead, click the Search button or press Enter to run a search. This prevents slowdowns when working with large Directory Reports.
 
 
 <h3> v1.2.1 </h3>
@@ -148,7 +166,7 @@ See LICENSE.txt.
 **HTML output**
 - Folder sizes now reflect the total size of everything inside them
 - Folders in the file list are no longer shown in bold
-- Large snapshots now show a loading indicator when opened in a browser, instead of a blank screen
+- Large Directory Reports now show a loading indicator when opened in a browser, instead of a blank screen
 
 **Other fixes**
 - The output filename now updates automatically when you drag in a new folder

@@ -12,7 +12,7 @@ enum HTMLTemplate {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Directory Snapshot</title>
+      <title id="page-title">Directory Report</title>
       <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -42,7 +42,7 @@ enum HTMLTemplate {
           margin-bottom: 2px;
         }
         #header-path {
-          font-size: 13px;
+          font-size: 16px;
           font-weight: 700;
           color: #e8e8e8;
           white-space: normal;
@@ -130,6 +130,33 @@ enum HTMLTemplate {
           overflow-x: hidden;
           flex-shrink: 0;
           user-select: none;
+          display: flex;
+          flex-direction: column;
+        }
+        #tree-container {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+        }
+        #version-box {
+          padding: 8px 12px;
+          border-top: 1px solid #3e3e3e;
+          background: #1e1e1e;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #version-box a {
+          font-size: 10px;
+          color: #888;
+          text-decoration: none;
+          display: block;
+          text-align: center;
+        }
+        #version-box a:hover {
+          color: #007acc;
+          text-decoration: underline;
         }
         #resizer {
           width: 4px;
@@ -304,7 +331,7 @@ enum HTMLTemplate {
       </div>
       <div id="header" style="display:none">
         <div id="header-title-block">
-          <h1>Directory Printout of:</h1>
+          <h1>Directory Report of:</h1>
           <div id="header-path"></div>
           <div id="header-meta">
             <span id="scan-date-display"></span>
@@ -319,7 +346,12 @@ enum HTMLTemplate {
         <span id="stats"></span>
       </div>
       <div id="main" style="display:none">
-        <div id="sidebar"></div>
+        <div id="sidebar">
+          <div id="tree-container"></div>
+          <div id="version-box">
+            <a href="https://github.com/rhodrihughes/Directory-Printer" target="_blank" rel="noopener noreferrer" id="version-link">Made with Directory Printer v1.0</a>
+          </div>
+        </div>
         <div id="resizer"></div>
         <div id="content">
           <div id="file-table-wrap"></div>
@@ -330,12 +362,54 @@ enum HTMLTemplate {
         const SNAPSHOT_DATA_RAW = /*SNAPSHOT_DATA*/;
         const CONFIG = /*SNAPSHOT_CONFIG*/;
 
-        // ── Decompression helper ───────────────────────────────────────────────
+        // ── Decryption helper ──────────────────────────────────────────────────
+
+        async function decryptData(payload, password) {
+          const ITERATIONS = 200000;
+          const enc = new TextEncoder();
+
+          function b64ToBytes(b64) {
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return bytes;
+          }
+
+          const saltBytes = b64ToBytes(payload.salt);
+          const iv = b64ToBytes(payload.iv);
+          // ciphertext is everything except the last 16 bytes (GCM tag)
+          const ctBytes = b64ToBytes(payload.ct);
+
+          const keyMaterial = await crypto.subtle.importKey(
+            'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+          );
+          const key = await crypto.subtle.deriveKey(
+            { name: 'PBKDF2', salt: saltBytes, iterations: ITERATIONS, hash: 'SHA-256' },
+            keyMaterial,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['decrypt']
+          );
+          // AES-GCM with 16-byte tag (SubtleCrypto expects ciphertext+tag concatenated)
+          const plainBuffer = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv, tagLength: 128 },
+            key,
+            ctBytes
+          );
+          return new Uint8Array(plainBuffer);
+        }
+
+
 
         async function decompressData(b64String) {
           const binary = atob(b64String);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return decompressBytes(bytes);
+        }
+
+        // Decompress a Uint8Array of gzip data and parse as JSON
+        async function decompressBytes(bytes) {
           const ds = new DecompressionStream('gzip');
           const writer = ds.writable.getWriter();
           writer.write(bytes);
@@ -886,11 +960,80 @@ enum HTMLTemplate {
         // ── Init ───────────────────────────────────────────────────────────────
 
         (async function init() {
-          const data = CONFIG.compressed
-            ? await decompressData(SNAPSHOT_DATA_RAW)
-            : SNAPSHOT_DATA_RAW;
+          // Decrypt → decompress → parse, depending on CONFIG flags
+          let data;
+          
+          if (CONFIG.encrypted) {
+            const overlay = document.getElementById('loading-overlay');
+            // Replace spinner with password form
+            overlay.innerHTML = `
+              <form id="pw-form" style="display:flex;flex-direction:column;align-items:center;gap:14px;width:280px;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="11" width="18" height="11" rx="2" stroke="#007acc" stroke-width="1.5"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="#007acc" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="12" cy="16" r="1.5" fill="#007acc"/>
+                </svg>
+                <div style="font-size:14px;color:#d4d4d4;font-weight:600;">This Directory Report is encrypted</div>
+                <input id="pw-input" type="password" placeholder="Enter password"
+                  style="width:100%;background:#3c3c3c;border:1px solid #555;border-radius:4px;color:#d4d4d4;padding:7px 10px;font-size:13px;outline:none;box-sizing:border-box;"
+                  autocomplete="current-password" autofocus/>
+                <button type="submit"
+                  style="width:100%;background:#007acc;border:none;border-radius:4px;color:#fff;padding:7px 0;font-size:13px;cursor:pointer;border-radius:4px;">
+                  Unlock
+                </button>
+                <div id="pw-error" style="font-size:12px;color:#f48771;min-height:16px;"></div>
+              </form>`;
 
+            data = await new Promise((resolve) => {
+              document.getElementById('pw-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const password = document.getElementById('pw-input').value;
+                const errEl = document.getElementById('pw-error');
+                errEl.textContent = '';
+                try {
+                  const decrypted = await decryptData(SNAPSHOT_DATA_RAW, password);
+                  // Restore spinner while we finish loading
+                  overlay.innerHTML = `
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="18" cy="18" r="15" stroke="#3e3e3e" stroke-width="3"/>
+                      <path d="M18 3 A15 15 0 0 1 33 18" stroke="#007acc" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <div class="loading-text">Loading snapshot…</div>`;
+                  if (CONFIG.compressed) {
+                    resolve(await decompressBytes(decrypted));
+                  } else {
+                    resolve(JSON.parse(new TextDecoder().decode(decrypted)));
+                  }
+                } catch {
+                  errEl.textContent = 'Incorrect password. Please try again.';
+                  document.getElementById('pw-input').value = '';
+                  document.getElementById('pw-input').focus();
+                }
+              });
+            });
+          } else if (CONFIG.compressed) {
+            data = await decompressData(SNAPSHOT_DATA_RAW);
+          } else {
+            data = SNAPSHOT_DATA_RAW;
+          }
           _snapshotData = data;
+
+          // Set page title with folder name and scan date
+          if (data.rootPath) {
+            const folderName = data.rootPath.split('/').filter(p => p).pop() || data.rootPath;
+            let title = 'Directory Report - ' + folderName;
+            if (data.scanDate) {
+              const scanDateFormatted = formatDate(data.scanDate);
+              title += ' - ' + scanDateFormatted;
+            }
+            document.getElementById('page-title').textContent = title;
+          }
+
+          // Set version from config
+          const versionLink = document.getElementById('version-link');
+          if (versionLink && CONFIG.appVersion) {
+            versionLink.textContent = 'Made with Directory Printer v' + CONFIG.appVersion;
+          }
 
           // Header
           document.getElementById('header-path').textContent = data.rootPath || '';
@@ -899,10 +1042,10 @@ enum HTMLTemplate {
             data.totalFiles + ' files, ' + data.totalFolders + ' folders';
 
           // Build tree
-          const sidebar = document.getElementById('sidebar');
+          const treeContainer = document.getElementById('tree-container');
           const rootEl = buildTree(data.root, 0);
           if (rootEl) {
-            sidebar.appendChild(rootEl);
+            treeContainer.appendChild(rootEl);
             // Expand root and select it
             const rootRow = rootEl.querySelector('.tree-row');
             const rootChildren = rootEl.querySelector('.tree-children');

@@ -23,6 +23,9 @@ struct ScanOptions {
     let linkToFiles: Bool
     let generateThumbnails: Bool
     let compressData: Bool
+    /// When non-nil, the snapshot data is AES-256-GCM encrypted with this password.
+    /// Incompatible with generateThumbnails (thumbnails are external files and cannot be encrypted).
+    let encryptionPassword: String?
 }
 
 // MARK: - ScanResult
