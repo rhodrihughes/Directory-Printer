@@ -8,6 +8,18 @@ struct PreferencesView: View {
 
     var body: some View {
         Form {
+            Section(header: Text("Output").font(.headline)) {
+                Toggle(isOn: $prefs.compressData) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Compress Directory Report")
+                        Text("Compresses embedded data by ~13:1. \nRecommend to leave enabled.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             Section(header: Text("Thumbnails").font(.headline)) {
                 Toggle(isOn: $prefs.retinaThumnails) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -63,7 +75,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 280)
+        .frame(width: 420, height: 360)
         .padding()
     }
 }

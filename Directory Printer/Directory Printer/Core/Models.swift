@@ -35,6 +35,7 @@ struct ScanResult: Codable {
     var root: FileNode
     let totalFiles: Int
     let totalFolders: Int
+    let totalSize: Int64     // sum of all file sizes in bytes
     let scanDate: Date
     let rootPath: String
     let warnings: [String]  // permission errors, skipped items

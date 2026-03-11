@@ -15,6 +15,7 @@ class PreferencesManager: ObservableObject {
 
     private let logoKey = "logoBase64"
     private let retinaThumbsKey = "retinaThumnails"
+    private let compressDataKey = "compressData"
     private let maxHeight: CGFloat = 32
 
     /// Base64-encoded PNG of the (possibly resized) logo, or nil if none set.
@@ -27,9 +28,17 @@ class PreferencesManager: ObservableObject {
         didSet { UserDefaults.standard.set(retinaThumnails, forKey: retinaThumbsKey) }
     }
 
+    /// When true, the Directory Report data is gzip-compressed. Defaults to true.
+    @Published var compressData: Bool {
+        didSet { UserDefaults.standard.set(compressData, forKey: compressDataKey) }
+    }
+
     private init() {
         logoBase64 = UserDefaults.standard.string(forKey: logoKey)
         retinaThumnails = UserDefaults.standard.bool(forKey: retinaThumbsKey)
+        // Default to true — only false if the user has explicitly turned it off.
+        let storedCompress = UserDefaults.standard.object(forKey: compressDataKey) as? Bool
+        compressData = storedCompress ?? true
     }
 
     // MARK: - Image selection

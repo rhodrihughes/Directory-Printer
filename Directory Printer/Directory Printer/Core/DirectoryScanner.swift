@@ -76,6 +76,7 @@ class DirectoryScanner: DirectoryScannerProtocol {
             root: root,
             totalFiles: totalFiles,
             totalFolders: totalFolders,
+            totalSize: root.size,
             scanDate: Date(),
             rootPath: rootURL.path,
             warnings: warnings

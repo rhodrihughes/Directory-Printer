@@ -255,7 +255,6 @@ struct ContentView: View {
                     }
                     caption("Generating thumbnails of large directories will increase generation time.")
                 }
-                Toggle("Compress Directory Report", isOn: $viewModel.compressData)
                 if !viewModel.generateThumbnails {
                     Toggle("Encrypt Directory Report", isOn: $viewModel.encryptionEnabled)
                     if viewModel.encryptionEnabled {

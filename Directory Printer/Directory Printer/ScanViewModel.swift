@@ -38,7 +38,6 @@ class ScanViewModel: ObservableObject {
     /// When true and thumbnails are enabled, the output folder is zipped and the
     /// unzipped folder is deleted, leaving a single .zip ready to share.
     @Published var zipThumbnailOutput: Bool = false
-    @Published var compressData: Bool = false
     /// Password for AES-256-GCM encryption. Empty string means no encryption.
     /// Encryption is only available when thumbnails are disabled.
     @Published var encryptionEnabled: Bool = false
@@ -229,7 +228,7 @@ class ScanViewModel: ObservableObject {
             includeHidden: includeHidden,
             linkToFiles: linkToFiles,
             generateThumbnails: generateThumbnails,
-            compressData: compressData,
+            compressData: PreferencesManager.shared.compressData,
             encryptionPassword: (!generateThumbnails && encryptionEnabled && !encryptionPassword.isEmpty) ? encryptionPassword : nil
         )
 
@@ -254,10 +253,13 @@ class ScanViewModel: ObservableObject {
                 var thumbnailsFolderName: String? = nil
                 var resultWithThumbs = result
                 let htmlOutput: URL
+                // Track the containing folder so we can clean it up on failure/cancel.
+                var thumbnailContainingFolder: URL? = nil
                 if options.generateThumbnails {
                     let stem = resolvedOutput.deletingPathExtension().lastPathComponent
                     let containingFolder = resolvedOutput.deletingLastPathComponent()
                         .appendingPathComponent(stem)
+                    thumbnailContainingFolder = containingFolder
                     do {
                         try FileManager.default.createDirectory(
                             at: containingFolder, withIntermediateDirectories: true)
@@ -305,6 +307,7 @@ class ScanViewModel: ObservableObject {
                 do {
                     try html.write(to: htmlOutput, atomically: true, encoding: .utf8)
                 } catch {
+                    try? thumbnailContainingFolder.map { try FileManager.default.removeItem(at: $0) }
                     DispatchQueue.main.async { [weak self] in
                         thumbnailFolderURL?.stopAccessingSecurityScopedResource()
                         self?.isScanning = false
@@ -325,6 +328,8 @@ class ScanViewModel: ObservableObject {
                         try FileManager.default.removeItem(at: containingFolder)
                         finalOutputURL = zipURL
                     } catch {
+                        // Clean up the unzipped folder since the zip failed.
+                        try? FileManager.default.removeItem(at: containingFolder)
                         DispatchQueue.main.async { [weak self] in
                             thumbnailFolderURL?.stopAccessingSecurityScopedResource()
                             self?.isScanning = false

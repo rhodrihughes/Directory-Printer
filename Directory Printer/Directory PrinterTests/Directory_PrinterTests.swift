@@ -88,7 +88,7 @@ final class Directory_PrinterTests: XCTestCase {
         let now = Date()
         let file = FileNode(name: "file.txt", path: "/tmp/file.txt", isDirectory: false, size: 42, dateModified: now, isSymlink: false, children: [])
         let root = FileNode(name: "tmp", path: "/tmp", isDirectory: true, size: 42, dateModified: now, isSymlink: false, children: [file])
-        return ScanResult(root: root, totalFiles: 1, totalFolders: 0, scanDate: now, rootPath: "/tmp", warnings: [])
+        return ScanResult(root: root, totalFiles: 1, totalFolders: 0, totalSize: 42, scanDate: now, rootPath: "/tmp", warnings: [])
     }
 
     func testDataEncoder_jsonRoundtrip() throws {

@@ -17,7 +17,7 @@ struct AboutView: View {
         return "© \(year) Rhodri Hughes"
     }
 
-    private let developerWebsite = URL(string: "https://www.rhodrihughes.co.uk")!
+    private let developerWebsite = URL(string: "https://github.com/rhodrihughes/Directory-Printer")!
 
     var body: some View {
         VStack(spacing: 14) {

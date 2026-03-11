@@ -83,6 +83,19 @@ See LICENSE.txt.
 
 ## Changelog
 
+<h3> v1.6.1 </h3>
+
+Compressed reports are now enabled by default.
+Disable in the app's settings if required.
+
+**Performance improvements**
+- Multi-threaded thumbnail generation
+- Better memory handling
+
+**Other improvments**
+- Added total size of input folder to report
+
+
 <h3> v1.6 </h3>
 
 **Directory Report encryption**

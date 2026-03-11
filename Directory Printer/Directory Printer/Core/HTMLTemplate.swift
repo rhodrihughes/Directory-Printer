@@ -74,7 +74,7 @@ enum HTMLTemplate {
           display: block;
         }
         #toolbar {
-          background: #252526;
+          background: #2d2d2d;
           border-bottom: 1px solid #3e3e3e;
           padding: 6px 16px;
           display: flex;
@@ -83,10 +83,10 @@ enum HTMLTemplate {
           flex-shrink: 0;
         }
         #search-input {
-          flex: 1;
-          max-width: 280px;
+          width: 280px;
           background: #3c3c3c;
           border: 1px solid #555;
+          border-right: none;
           border-radius: 4px 0 0 4px;
           color: #d4d4d4;
           padding: 4px 8px;
@@ -94,9 +94,10 @@ enum HTMLTemplate {
           outline: none;
         }
         #search-input:focus { border-color: #007acc; }
+        #search-input:focus + #search-btn { border-color: #007acc; }
         #search-input::placeholder { color: #666; }
         #search-btn {
-          background: #3c3c3c;
+          background: #4a4a4a;
           border: 1px solid #555;
           border-left: none;
           border-radius: 0 4px 4px 0;
@@ -238,7 +239,7 @@ enum HTMLTemplate {
         th:nth-child(1) { width: 45%; }
         th:nth-child(2) { width: 30%; }
         th:nth-child(3) { width: 25%; }
-        th.col-size { text-align: right; }
+        th.col-size { text-align: left; }
         .col-resizer {
           position: absolute;
           right: 0;
@@ -270,7 +271,7 @@ enum HTMLTemplate {
           white-space: nowrap;
           font-size: 12px;
         }
-        td.col-size { text-align: right; color: #888; }
+        td.col-size { text-align: left; color: #888; }
         td.col-date { color: #888; }
         tr:hover td { background: #2a2d2e; }
         td a { color: #4ec9b0; text-decoration: none; }
@@ -341,8 +342,10 @@ enum HTMLTemplate {
         /*SNAPSHOT_LOGO*/
       </div>
       <div id="toolbar" style="display:none">
-        <input type="text" id="search-input" placeholder="Search files…" autocomplete="off" spellcheck="false">
-        <button id="search-btn">Search</button>
+        <div style="display:flex">
+          <input type="text" id="search-input" placeholder="Search files…" autocomplete="off" spellcheck="false">
+          <button id="search-btn">Search</button>
+        </div>
         <span id="stats"></span>
       </div>
       <div id="main" style="display:none">
@@ -657,7 +660,7 @@ enum HTMLTemplate {
             th.textContent = col.label;
             if (col.cls) th.classList.add(col.cls);
             if (sortCol === col.key) {
-              th.className = sortDir === 1 ? 'sort-asc' : 'sort-desc';
+              th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
             }
             th.addEventListener('click', () => {
               if (sortCol === col.key) {
@@ -1039,7 +1042,8 @@ enum HTMLTemplate {
           document.getElementById('header-path').textContent = data.rootPath || '';
           document.getElementById('scan-date-display').textContent = data.scanDate ? formatDate(data.scanDate) : '';
           document.getElementById('totals-display').textContent =
-            data.totalFiles + ' files, ' + data.totalFolders + ' folders';
+            data.totalFiles + ' files, ' + data.totalFolders + ' folders' +
+            (data.totalSize != null ? ', ' + formatSize(data.totalSize) + ' total' : '');
 
           // Build tree
           const treeContainer = document.getElementById('tree-container');

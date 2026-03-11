@@ -42,45 +42,88 @@ struct ThumbnailGenerator {
         pixelSize: CGFloat = 64,
         progress: ((Int, Int) -> Void)? = nil
     ) -> [String: String] {
-        let fm = FileManager.default
-        try? fm.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
 
-        var mediaFiles: [FileNode] = []
-        collectSupportedFiles(root, into: &mediaFiles)
+        // Collect just the lightweight (path, name) pairs — avoids holding full FileNode copies.
+        var files: [(path: String, name: String)] = []
+        collectSupportedFiles(root, into: &files)
+        let total = files.count
 
         var map: [String: String] = [:]
-        let total = mediaFiles.count
-        let group = DispatchGroup()
         let lock = NSLock()
+        var completedCount = 0
 
-        for (index, node) in mediaFiles.enumerated() {
-            progress?(index + 1, total)
-            let filename = "\(abs(node.path.hashValue)).jpg"
-            let dest = outputFolder.appendingPathComponent(filename)
-            let ext = (node.name as NSString).pathExtension.lowercased()
+        // Use fewer concurrent workers on network volumes to avoid overwhelming the
+        // SMB server with simultaneous file reads. Local volumes use all CPU cores.
+        let workerCount = concurrencyLimit(for: root.path)
+        let semaphore = DispatchSemaphore(value: workerCount)
+        let group = DispatchGroup()
+        let queue = DispatchQueue.global(qos: .userInitiated)
 
-            if Self.imageExtensions.contains(ext) {
-                // High-quality direct render for images
-                if let data = makeImageThumbnail(for: node.path, pixelSize: pixelSize) {
-                    try? data.write(to: dest)
-                    map[node.path] = filename
-                }
-            } else {
-                // QL for video, PDF, office docs, etc.
-                group.enter()
-                generateQLThumbnail(for: node.path, saveTo: dest, pixelSize: pixelSize) { success in
-                    if success {
-                        lock.lock()
-                        map[node.path] = filename
-                        lock.unlock()
-                    }
+        for i in 0..<total {
+            semaphore.wait()
+            group.enter()
+            queue.async {
+                defer {
+                    semaphore.signal()
                     group.leave()
                 }
-                group.wait()
+                let file = files[i]
+                let ext = (file.name as NSString).pathExtension.lowercased()
+                let filename = "\(abs(file.path.hashValue)).jpg"
+                let dest = outputFolder.appendingPathComponent(filename)
+
+                // Each iteration gets its own pool — AppKit objects are freed as soon as
+                // the thumbnail is written, keeping per-core memory usage flat.
+                autoreleasepool {
+                    let success: Bool
+                    if Self.imageExtensions.contains(ext) {
+                        if let data = makeImageThumbnail(for: file.path, pixelSize: pixelSize) {
+                            success = (try? data.write(to: dest)) != nil
+                        } else {
+                            success = false
+                        }
+                    } else {
+                        success = generateQLThumbnailSync(for: file.path, saveTo: dest, pixelSize: pixelSize)
+                    }
+
+                    lock.lock()
+                    if success { map[file.path] = filename }
+                    completedCount += 1
+                    let done = completedCount
+                    lock.unlock()
+
+                    progress?(done, total)
+                }
             }
         }
 
+        group.wait()
         return map
+    }
+
+    /// Returns the max number of concurrent thumbnail workers appropriate for the volume.
+    /// Network volumes (SMB, AFP, NFS) are capped to avoid overwhelming the server.
+    private static func concurrencyLimit(for path: String) -> Int {
+        let url = URL(fileURLWithPath: path)
+        let vals = try? url.resourceValues(forKeys: [.volumeIsLocalKey])
+        let isLocal = vals?.volumeIsLocal ?? true
+        return isLocal ? ProcessInfo.processInfo.activeProcessorCount : 4
+    }
+
+    // MARK: - Private walk helpers
+
+    private static func collectSupportedFiles(_ node: FileNode, into result: inout [(path: String, name: String)]) {
+        if node.isDirectory {
+            for child in node.children {
+                collectSupportedFiles(child, into: &result)
+            }
+        } else {
+            let ext = (node.name as NSString).pathExtension.lowercased()
+            if supportedExtensions.contains(ext) {
+                result.append((path: node.path, name: node.name))
+            }
+        }
     }
 
     /// Stamps thumbnail filenames from `map` back into the FileNode tree.
@@ -94,20 +137,7 @@ struct ThumbnailGenerator {
         }
     }
 
-    // MARK: - Private
-
-    private static func collectSupportedFiles(_ node: FileNode, into result: inout [FileNode]) {
-        if node.isDirectory {
-            for child in node.children {
-                collectSupportedFiles(child, into: &result)
-            }
-        } else {
-            let ext = (node.name as NSString).pathExtension.lowercased()
-            if supportedExtensions.contains(ext) {
-                result.append(node)
-            }
-        }
-    }
+    // MARK: - Image rendering
 
     private static func makeImageThumbnail(for path: String, pixelSize: CGFloat = 64) -> Data? {
         guard let image = NSImage(contentsOfFile: path),
@@ -139,50 +169,37 @@ struct ThumbnailGenerator {
         return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.5])
     }
 
-    private static func generateQLThumbnail(for path: String, saveTo dest: URL, pixelSize: CGFloat = 64, completion: @escaping (Bool) -> Void) {
+    private static func generateQLThumbnailSync(for path: String, saveTo dest: URL, pixelSize: CGFloat = 64) -> Bool {
         let url = URL(fileURLWithPath: path)
         let size = CGSize(width: pixelSize, height: pixelSize)
         let request = QLThumbnailGenerator.Request(
-            fileAt: url,
-            size: size,
-            scale: 1.0,
-            representationTypes: .thumbnail
-        )
+            fileAt: url, size: size, scale: 1.0, representationTypes: .thumbnail)
+
+        var result = false
+        let sema = DispatchSemaphore(value: 0)
 
         QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, _ in
-            guard let cgImage = thumbnail?.cgImage else {
-                completion(false)
-                return
-            }
-            // Clamp to pixelSize — QL may return larger images depending on scale
+            defer { sema.signal() }
+            guard let cgImage = thumbnail?.cgImage else { return }
+
             let maxPx: CGFloat = pixelSize
-            let w = CGFloat(cgImage.width)
-            let h = CGFloat(cgImage.height)
+            let w = CGFloat(cgImage.width), h = CGFloat(cgImage.height)
             let scale = min(1.0, min(maxPx / w, maxPx / h))
-            let outW = Int((w * scale).rounded())
-            let outH = Int((h * scale).rounded())
+            let outW = Int((w * scale).rounded()), outH = Int((h * scale).rounded())
             let colorSpace = cgImage.colorSpace ?? CGColorSpaceCreateDeviceRGB()
             guard let ctx = CGContext(data: nil, width: outW, height: outH,
                                       bitsPerComponent: 8, bytesPerRow: 0,
                                       space: colorSpace,
-                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue),
-                  let _ = { ctx.interpolationQuality = .high; return true }(),
-                  let _ = { ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: outW, height: outH)); return true }(),
-                  let scaled = ctx.makeImage() else {
-                completion(false)
-                return
-            }
+                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return }
+            ctx.interpolationQuality = .high
+            ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: outW, height: outH))
+            guard let scaled = ctx.makeImage() else { return }
             let rep = NSBitmapImageRep(cgImage: scaled)
-            guard let data = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.5]) else {
-                completion(false)
-                return
-            }
-            do {
-                try data.write(to: dest)
-                completion(true)
-            } catch {
-                completion(false)
-            }
+            guard let data = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.5]) else { return }
+            result = (try? data.write(to: dest)) != nil
         }
+
+        sema.wait()
+        return result
     }
 }
